@@ -1,0 +1,29 @@
+# Python & Virtual Environment
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# AI Model Weights (>100MB GitHub limit - auto-downloaded by setup.bat / app.py)
+weights/*.pt
+weights/**/*.pt
+weights/*.pth
+weights/**/*.pth
+weights/*.bin
+weights/**/*.bin
+!weights/.gitkeep
+
+# Local Runtime State & Exported / Generated Datasets
+dataset/
+projects/
+device_config.json
+projects_registry.json
+
+# Logs, Temp & Editor Files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
