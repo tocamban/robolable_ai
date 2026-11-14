@@ -43,6 +43,7 @@ robolabel_app/
 ├── requirements.txt        # Danh sách thư viện Python
 ├── setup.bat               # Tự động tạo venv, cài CUDA/CPU PyTorch & tải model AI
 ├── run_app.bat             # Khởi động server (port 5050) và mở trình duyệt
+├── update.bat              # 1-click kéo bản cập nhật mới nhất từ GitHub
 ├── stop_server.bat         # Tắt server & giải phóng port 5050
 ├── stop_server.ps1         # Script PowerShell dừng tiến trình trên port 5050
 └── push_to_github.bat      # Hỗ trợ đóng gói & đẩy mã nguồn lên GitHub
@@ -58,15 +59,17 @@ Yêu cầu: Windows, **Python 3.10 – 3.14** (nhớ tích chọn **Add python.e
 
 1. **Clone mã nguồn về máy:**
    ```bash
-   git clone https://github.com/<tai-khoan-cua-ban>/<ten-repo>.git
-   cd <ten-repo>
+   git clone https://github.com/tocamban/robolable_ai.git
+   cd robolable_ai
    ```
 2. **Cài đặt tự động (1-click):**
    - Nhấp đúp vào **`setup.bat`**. Script sẽ tự tạo `venv`, tự nhận diện GPU NVIDIA để cài PyTorch CUDA (`cu126`), cài các gói trong `requirements.txt`, và tự tải model **SAM 2.1 Tiny** + **CLIP ViT-B/32** vào thư mục `weights\`.
    - *(Nếu dùng thêm model `SAM 2.1 Large`, app sẽ tự động tải về `weights\sam2.1_l.pt` ở lần chọn đầu tiên).*
 3. **Khởi chạy ứng dụng:**
    - Nhấp đúp **`run_app.bat`** → trình duyệt mở tại `http://127.0.0.1:5050`.
-4. **Tắt ứng dụng:**
+4. **Cập nhật phiên bản mới (trên máy khác):**
+   - Mỗi khi có bản cập nhật mới trên GitHub, chỉ cần nhấp đúp **`update.bat`** (tự động pull code mới và cài thêm thư viện nếu có thay đổi).
+5. **Tắt ứng dụng:**
    - Nhấp đúp **`stop_server.bat`** hoặc bấm `Ctrl + C` trong cửa sổ terminal.
 
 ---
