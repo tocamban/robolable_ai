@@ -2,6 +2,8 @@
 
 Ứng dụng web chạy cục bộ giúp gán nhãn dữ liệu hình ảnh bán tự động cho **YOLO Instance Segmentation** (Polygon) và **YOLO Object Detection** (Bounding Box), tích hợp **SAM 2.1 (Segment Anything)**, **CLIP ViT-B/32** (tự động nhận dạng class), quản lý nhiều Dataset Project kèm **Auto-Save**, và công cụ **Chuyển đổi GPU/CPU + Benchmark GPU**.
 
+> **Phiên bản hiện tại:** `v1.1` — Hiển thị badge phiên bản trên Header & hỗ trợ tự động cập nhật 1-click qua `update.bat`.
+
 ---
 
 ## 1. Tính năng chính

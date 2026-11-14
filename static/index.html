@@ -1096,6 +1096,17 @@
       border-color: #818cf8;
       color: #3730a3;
     }
+    .app-version-pill {
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
     .modal-card.modal-guide {
       width: 880px;
       max-width: 95vw;
@@ -1335,6 +1346,7 @@
       </div>
     </div>
     <div class="top-right">
+      <span class="app-version-pill" id="appVersionBadge" title="RoboLabel AI v1.1 • Hỗ trợ cập nhật 1-click qua update.bat">v1.1</span>
       <button type="button" class="btn-guide-header" id="btnOpenGuide" onclick="openGuideModal('overview')" title="Xem hướng dẫn sử dụng giao diện & công cụ (Phím ? hoặc F1)">
         <i class="fa-solid fa-book-open"></i> Hướng dẫn
       </button>
@@ -1789,6 +1801,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-book-open"></i>
           <span>Hướng dẫn sử dụng giao diện RoboLabel AI</span>
+          <span class="app-version-pill">v1.1</span>
         </div>
         <button class="modal-close" onclick="closeGuideModal()" aria-label="Đóng hướng dẫn">&times;</button>
       </div>
