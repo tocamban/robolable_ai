@@ -2,7 +2,6 @@
   "annotations": [
     {
       "class_name": "ripe",
-      "type": "polygon",
       "polygon": [
         [
           356,
@@ -216,11 +215,11 @@
           361,
           171
         ]
-      ]
+      ],
+      "type": "polygon"
     },
     {
       "class_name": "stem",
-      "type": "polygon",
       "polygon": [
         [
           287,
@@ -366,11 +365,11 @@
           295,
           0
         ]
-      ]
+      ],
+      "type": "polygon"
     },
     {
       "class_name": "calyx",
-      "type": "polygon",
       "polygon": [
         [
           232,
@@ -583,6 +582,29 @@
         [
           240,
           143
+        ]
+      ],
+      "type": "polygon"
+    },
+    {
+      "class_name": "calyx",
+      "type": "polygon",
+      "polygon": [
+        [
+          485,
+          419.5
+        ],
+        [
+          403,
+          456.5
+        ],
+        [
+          418,
+          393.5
+        ],
+        [
+          461,
+          390.5
         ]
       ]
     }

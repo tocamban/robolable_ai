@@ -3138,6 +3138,11 @@
     function adjustZoom(delta) {
       zoomLevel = Math.max(0.2, Math.min(4.0, zoomLevel + delta));
       applyTransform();
+      redraw();
+    }
+
+    function getZoomInv() {
+      return 1 / Math.max(0.35, zoomLevel || 1.0);
     }
 
     function resetZoom() {
@@ -3239,8 +3244,9 @@
           if (selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex]) {
             const poly = annotations[selectedAnnotationIndex].polygon;
             if (poly) {
+              const hitDist = 9 * getZoomInv();
               for (let i = 0; i < poly.length; i++) {
-                if (Math.hypot(coords.x - poly[i][0], coords.y - poly[i][1]) < 10) {
+                if (Math.hypot(coords.x - poly[i][0], coords.y - poly[i][1]) < hitDist) {
                   isDraggingVertex = true;
                   draggingVertexIndex = i;
                   preVertexDragSnapshot = JSON.parse(JSON.stringify(annotations));
@@ -3275,7 +3281,7 @@
           // Chuột trái:
           if (manualPolyPoints.length >= 3) {
             const d0 = Math.hypot(coords.x - manualPolyPoints[0].x, coords.y - manualPolyPoints[0].y);
-            if (d0 < 14) {
+            if (d0 < 10 * getZoomInv()) {
               finishManualPolygon();
               return;
             }
@@ -3641,13 +3647,15 @@
 
           // Draw vertex handles for selected object
           if (isSelected) {
+            const invZ = getZoomInv();
+            const handleR = 2.5 * invZ;
             ann.polygon.forEach(pt => {
               ctx.beginPath();
-              ctx.arc(pt[0], pt[1], 4.5, 0, Math.PI * 2);
+              ctx.arc(pt[0], pt[1], handleR, 0, Math.PI * 2);
               ctx.fillStyle = "#ffffff";
               ctx.fill();
               ctx.strokeStyle = "#7c3aed";
-              ctx.lineWidth = 2;
+              ctx.lineWidth = 1.2 * invZ;
               ctx.stroke();
             });
           }
@@ -3725,6 +3733,7 @@
       if (activeTool === "poly_manual" && manualPolyPoints.length > 0) {
         const isAppendMode = (selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex]);
         const drawColor = isAppendMode ? "#7c3aed" : ((CLASSES.find(c => c.name === currentClass) || {}).color || "#a855f7");
+        const invZ = getZoomInv();
 
         ctx.beginPath();
         ctx.moveTo(manualPolyPoints[0].x, manualPolyPoints[0].y);
@@ -3738,33 +3747,33 @@
         }
 
         ctx.strokeStyle = drawColor;
-        ctx.lineWidth = 2.2;
-        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 1.4 * invZ;
+        ctx.setLineDash([4 * invZ, 3 * invZ]);
         ctx.stroke();
         ctx.setLineDash([]);
 
         ctx.fillStyle = drawColor + "25";
         ctx.fill();
 
-        // Vẽ các đỉnh đã đặt
+        // Vẽ các đỉnh đã đặt (kích thước nhỏ gọn và ổn định theo mức zoom)
         manualPolyPoints.forEach((pt, i) => {
           ctx.beginPath();
-          ctx.arc(pt.x, pt.y, i === 0 ? 5.5 : 4, 0, Math.PI * 2);
+          ctx.arc(pt.x, pt.y, (i === 0 ? 2.8 : 2.0) * invZ, 0, Math.PI * 2);
           ctx.fillStyle = (i === 0) ? "#ffffff" : drawColor;
           ctx.fill();
           ctx.strokeStyle = drawColor;
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 1.1 * invZ;
           ctx.stroke();
         });
 
         // Vòng tròn Snap màu xanh lá khi chuột lại gần điểm xuất phát
         if (manualPolyPoints.length >= 3 && dragCurrent && dragCurrent.x !== undefined) {
           const d0 = Math.hypot(dragCurrent.x - manualPolyPoints[0].x, dragCurrent.y - manualPolyPoints[0].y);
-          if (d0 < 14) {
+          if (d0 < 10 * invZ) {
             ctx.beginPath();
-            ctx.arc(manualPolyPoints[0].x, manualPolyPoints[0].y, 11, 0, Math.PI * 2);
+            ctx.arc(manualPolyPoints[0].x, manualPolyPoints[0].y, 6.5 * invZ, 0, Math.PI * 2);
             ctx.strokeStyle = "#22c55e"; // bright green snap ring
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 1.8 * invZ;
             ctx.stroke();
           }
         }
