@@ -255,29 +255,20 @@ def _find_matching_label(img_rel, txt_by_rel, txt_by_rel_lower, txt_by_stem_lowe
     sibling = "/".join(parts[:-1] + [f"{stem}.txt"]) if len(parts) > 1 else f"{stem}.txt"
     candidates.append(sibling)
 
-    # 2. Swap last directory named 'images' -> 'labels'
-    for idx in range(len(parts) - 2, -1, -1):
-        if parts[idx].lower() == "images":
-            swapped = list(parts[:-1])
-            swapped[idx] = "labels"
-            candidates.append("/".join(swapped + [f"{stem}.txt"]))
-            break
-
-    # 3. Also swap 'image' -> 'label'
-    for idx in range(len(parts) - 2, -1, -1):
-        if parts[idx].lower() == "image":
-            swapped = list(parts[:-1])
-            swapped[idx] = "label"
-            candidates.append("/".join(swapped + [f"{stem}.txt"]))
-            break
+    # 2 & 3. Swap last directory named 'images' -> 'labels' or 'image' -> 'label'
+    for src_dir, dst_dir in (("images", "labels"), ("image", "label")):
+        for idx in range(len(parts) - 2, -1, -1):
+            if parts[idx].lower() == src_dir:
+                swapped = list(parts[:-1])
+                swapped[idx] = dst_dir
+                candidates.append("/".join(swapped + [f"{stem}.txt"]))
+                break
 
     # 4. Check '<parent>/labels/<stem>.txt' and top-level 'labels/' layouts
     if len(parts) >= 2:
         candidates.append("/".join(parts[:-1] + ["labels", f"{stem}.txt"]))
         candidates.append("labels/" + "/".join(parts[:-1] + [f"{stem}.txt"]))
-        candidates.append(f"labels/{stem}.txt")
-    else:
-        candidates.append(f"labels/{stem}.txt")
+    candidates.append(f"labels/{stem}.txt")
 
     for cand in candidates:
         if cand in txt_by_rel:
@@ -627,11 +618,15 @@ def annotations_to_yolo_lines(annotations, img_w, img_h, class_names):
     return lines
 
 
-def write_project_yaml_and_classes(project_dir, class_names):
-    norm_dir = project_dir.replace("\\", "/")
+def _build_yolo_yaml(root_dir, class_names, train_rel="images", val_rel="images", test_rel=""):
+    norm_dir = root_dir.replace("\\", "/")
     names_block = "\n".join([f"  {idx}: {name}" for idx, name in enumerate(class_names)])
-    yaml_content = f"path: {norm_dir}\ntrain: images\nval: images\n\nnames:\n{names_block}\n"
-    atomic_write_text(os.path.join(project_dir, "data.yaml"), yaml_content)
+    test_line = f"test: {test_rel}\n" if test_rel else ""
+    return f"path: {norm_dir}\ntrain: {train_rel}\nval: {val_rel}\n{test_line}\nnames:\n{names_block}\n"
+
+
+def write_project_yaml_and_classes(project_dir, class_names):
+    atomic_write_text(os.path.join(project_dir, "data.yaml"), _build_yolo_yaml(project_dir, class_names))
     atomic_write_text(os.path.join(project_dir, "classes.txt"), "\n".join(class_names) + "\n")
 
 
@@ -1327,16 +1322,13 @@ class ProjectManager:
             atomic_write_text(os.path.join(dataset_dir, "labels", split, f"{stem}.txt"), txt_content)
             atomic_write_text(os.path.join(labels_dir, f"{stem}.txt"), txt_content)
 
-        norm_dataset_dir = dataset_dir.replace("\\", "/")
-        names_block = "\n".join([f"  {idx}: {name}" for idx, name in enumerate(class_names)])
-        test_line = "test: images/test\n" if stats["test_images"] > 0 else ""
-        yaml_content = f"""path: {norm_dataset_dir}
-train: images/train
-val: images/val
-{test_line}
-names:
-{names_block}
-"""
+        yaml_content = _build_yolo_yaml(
+            dataset_dir,
+            class_names,
+            train_rel="images/train",
+            val_rel="images/val",
+            test_rel="images/test" if stats["test_images"] > 0 else "",
+        )
         yaml_path = os.path.join(dataset_dir, "data.yaml")
         atomic_write_text(yaml_path, yaml_content)
 

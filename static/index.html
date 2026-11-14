@@ -510,13 +510,6 @@
       border-color: var(--primary);
     }
 
-    .class-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 6px;
-    }
-
     .pill-btn {
       background: #f1f5f9;
       border: 1px solid var(--border-color);
@@ -1346,7 +1339,7 @@
       </div>
     </div>
     <div class="top-right">
-      <span class="app-version-pill" id="appVersionBadge" title="RoboLabel AI v1.11 • Hỗ trợ cập nhật 1-click qua update.bat">v1.11</span>
+      <span class="app-version-pill" id="appVersionBadge" title="RoboLabel AI v1.12 • Hỗ trợ cập nhật 1-click qua update.bat">v1.12</span>
       <button type="button" class="btn-guide-header" id="btnOpenGuide" onclick="openGuideModal('overview')" title="Xem hướng dẫn sử dụng giao diện & công cụ (Phím ? hoặc F1)">
         <i class="fa-solid fa-book-open"></i> Hướng dẫn
       </button>
@@ -1801,7 +1794,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-book-open"></i>
           <span>Hướng dẫn sử dụng giao diện RoboLabel AI</span>
-          <span class="app-version-pill">v1.11</span>
+          <span class="app-version-pill">v1.12</span>
         </div>
         <button class="modal-close" onclick="closeGuideModal()" aria-label="Đóng hướng dẫn">&times;</button>
       </div>
@@ -2535,19 +2528,14 @@
       pushHistory();
       showToast("Đang cắt tỉa vùng thừa...");
       try {
-        const res = await fetch("/api/edit_polygon", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image_name: currentImageName,
-            polygon: target.polygon,
-            operation: "erase",
-            strokes: eraserStrokes,
-            image_width: canvas.width,
-            image_height: canvas.height
-          })
+        const { data } = await postJson("/api/edit_polygon", {
+          image_name: currentImageName,
+          polygon: target.polygon,
+          operation: "erase",
+          strokes: eraserStrokes,
+          image_width: canvas.width,
+          image_height: canvas.height
         });
-        const data = await res.json();
         if (data.deleted) {
           annotations.splice(selectedAnnotationIndex, 1);
           selectedAnnotationIndex = null;
@@ -2593,19 +2581,14 @@
         const target = annotations[selectedAnnotationIndex];
         showToast(`Đang đắp thêm vào ${target.class_name} #${selectedAnnotationIndex + 1}...`);
         try {
-          const res = await fetch("/api/edit_polygon", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              image_name: currentImageName,
-              polygon: target.polygon,
-              operation: "add",
-              add_polygon: poly,
-              image_width: canvas.width,
-              image_height: canvas.height
-            })
+          const { data } = await postJson("/api/edit_polygon", {
+            image_name: currentImageName,
+            polygon: target.polygon,
+            operation: "add",
+            add_polygon: poly,
+            image_width: canvas.width,
+            image_height: canvas.height
           });
-          const data = await res.json();
           if (data.polygons && data.polygons.length > 0) {
             target.polygon = data.polygons[0];
             target.type = "polygon";
@@ -2672,6 +2655,15 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    }
+
+    async function postJson(url, payload) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      return { res, data: await res.json() };
     }
 
     // Init
@@ -2972,12 +2964,10 @@
         queuedSavePayload = null;
         setAutoSaveStatus("saving");
         try {
-          const res = await fetch(`/api/annotations/${encodeURIComponent(item.imageName)}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ annotations: item.annotations })
-          });
-          const data = await res.json();
+          const { res, data } = await postJson(
+            `/api/annotations/${encodeURIComponent(item.imageName)}`,
+            { annotations: item.annotations }
+          );
           if (!res.ok || data.success === false) {
             throw new Error(data.error || "Save failed");
           }
@@ -3567,17 +3557,12 @@
     async function callAISegment(payload) {
       showToast("Đang phân tích hình ảnh & chạy AI...");
       try {
-        const res = await fetch("/api/segment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image_name: currentImageName,
-            model_id: selectedModel,
-            class_name: currentClass,
-            ...payload
-          })
+        const { data } = await postJson("/api/segment", {
+          image_name: currentImageName,
+          model_id: selectedModel,
+          class_name: currentClass,
+          ...payload
         });
-        const data = await res.json();
         if (data.polygons && data.polygons.length > 0) {
           pushHistory();
           const assignedClass = data.class_name || currentClass;
@@ -4001,12 +3986,7 @@
       await flushPendingSave();
       showToast("Đang mở lại project...");
       try {
-        const res = await fetch("/api/projects/switch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ project_id: projectId })
-        });
-        const data = await res.json();
+        const { res, data } = await postJson("/api/projects/switch", { project_id: projectId });
         if (!res.ok || !data.success) {
           alert(data.error || "Không thể chuyển project");
           return;
@@ -4018,24 +3998,24 @@
       }
     }
 
-    async function browseExistingProjectFolder() {
+    async function browseFolderInto(inputId, title, initialDir, errToast, onSelected) {
       try {
-        const res = await fetch("/api/browse_folder", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "Chọn thư mục Project RoboLabel đã lưu",
-            initial_dir: defaultProjectsDir
-          })
-        });
-        const data = await res.json();
+        const { data } = await postJson("/api/browse_folder", { title, initial_dir: initialDir });
         if (data.success && !data.cancelled && data.path) {
-          document.getElementById("openExistingProjectPathInput").value = data.path;
+          document.getElementById(inputId).value = data.path;
+          if (onSelected) await onSelected(data.path);
         }
       } catch (e) {
-        showToast("Không mở được hộp thoại chọn thư mục");
+        showToast(errToast);
       }
     }
+
+    const browseExistingProjectFolder = () => browseFolderInto(
+      "openExistingProjectPathInput",
+      "Chọn thư mục Project RoboLabel đã lưu",
+      defaultProjectsDir,
+      "Không mở được hộp thoại chọn thư mục"
+    );
 
     async function openProjectFromInputPath() {
       const pdir = document.getElementById("openExistingProjectPathInput").value.trim();
@@ -4045,12 +4025,7 @@
       }
       await flushPendingSave();
       try {
-        const res = await fetch("/api/projects/open_folder", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ project_dir: pdir })
-        });
-        const data = await res.json();
+        const { res, data } = await postJson("/api/projects/open_folder", { project_dir: pdir });
         if (!res.ok || !data.success) {
           alert(data.error || "Không mở được thư mục project này.");
           return;
@@ -4068,12 +4043,7 @@
       }
       try {
         const wasActive = (projectId === activeProjectId);
-        const res = await fetch("/api/projects/remove", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ project_id: projectId })
-        });
-        const data = await res.json();
+        const { data } = await postJson("/api/projects/remove", { project_id: projectId });
         if (data.success) {
           if (wasActive) {
             await applyActiveProjectSwitch(data, `Đã gỡ '${name}' khỏi danh sách và quay về Workspace Mặc định.`);
@@ -4092,46 +4062,21 @@
     // Local Path Inspection & Folder Browser Helpers
     // -------------------------------------------------------------------------
 
-    async function browseSaveProjectFolder() {
-      const curVal = document.getElementById("newProjectSaveDirInput").value.trim();
-      try {
-        const res = await fetch("/api/browse_folder", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "Chọn thư mục lưu Dataset Project mới",
-            initial_dir: curVal || defaultProjectsDir
-          })
-        });
-        const data = await res.json();
-        if (data.success && !data.cancelled && data.path) {
-          document.getElementById("newProjectSaveDirInput").value = data.path;
-          updateTargetPathPreview();
-        }
-      } catch (e) {
-        showToast("Không mở được hộp thoại chọn vị trí lưu");
-      }
-    }
+    const browseSaveProjectFolder = () => browseFolderInto(
+      "newProjectSaveDirInput",
+      "Chọn thư mục lưu Dataset Project mới",
+      document.getElementById("newProjectSaveDirInput").value.trim() || defaultProjectsDir,
+      "Không mở được hộp thoại chọn vị trí lưu",
+      updateTargetPathPreview
+    );
 
-    async function browseLocalSourceFolder() {
-      try {
-        const res = await fetch("/api/browse_folder", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "Chọn thư mục ảnh hoặc Dataset YOLO nguồn",
-            initial_dir: ""
-          })
-        });
-        const data = await res.json();
-        if (data.success && !data.cancelled && data.path) {
-          document.getElementById("localSourcePathInput").value = data.path;
-          await analyzeLocalSourcePath();
-        }
-      } catch (e) {
-        showToast("Không mở được hộp thoại chọn thư mục nguồn");
-      }
-    }
+    const browseLocalSourceFolder = () => browseFolderInto(
+      "localSourcePathInput",
+      "Chọn thư mục ảnh hoặc Dataset YOLO nguồn",
+      "",
+      "Không mở được hộp thoại chọn thư mục nguồn",
+      analyzeLocalSourcePath
+    );
 
     async function analyzeLocalSourcePath() {
       const sourceDir = document.getElementById("localSourcePathInput").value.trim();
@@ -4141,12 +4086,7 @@
       }
       hideCreateProjectError();
       try {
-        const res = await fetch("/api/projects/analyze_path", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ source_dir: sourceDir })
-        });
-        const data = await res.json();
+        const { res, data } = await postJson("/api/projects/analyze_path", { source_dir: sourceDir });
         if (!res.ok || !data.success) {
           showCreateProjectError(data.error || "Không phân tích được thư mục nguồn.");
           return;
@@ -4156,13 +4096,7 @@
         pendingLocalSourceDir = data.source_dir;
         pendingDetectedSummary = data;
 
-        const nameInput = document.getElementById("newProjectNameInput");
-        if (!nameInput.value.trim()) {
-          nameInput.value = `${sanitizeFolderSlug(data.suggested_name)}_project`;
-        } else {
-          // Always update default suggestion when choosing a new source unless manually edited away
-          nameInput.value = `${sanitizeFolderSlug(data.suggested_name)}_project`;
-        }
+        document.getElementById("newProjectNameInput").value = `${sanitizeFolderSlug(data.suggested_name)}_project`;
         document.getElementById("dropZoneTitle").innerText = `Nguồn cục bộ: ${data.suggested_name}`;
         renderDetectionSummary(data, data.suggested_name);
         updateTargetPathPreview();
@@ -4698,17 +4632,12 @@
         if (pendingImportMode === "local") {
           progFill.style.width = "50%";
           progText.innerText = "Đang sao chép an toàn dữ liệu và đọc nhãn...";
-          const res = await fetch("/api/projects/create_from_path", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              source_dir: pendingLocalSourceDir,
-              save_dir: saveDir,
-              project_name: projectName,
-              classes: customClasses
-            })
+          const { res, data } = await postJson("/api/projects/create_from_path", {
+            source_dir: pendingLocalSourceDir,
+            save_dir: saveDir,
+            project_name: projectName,
+            classes: customClasses
           });
-          const data = await res.json();
           if (!res.ok || !data.success) {
             throw new Error(data.error || "Không tạo được project từ đường dẫn này.");
           }
@@ -4722,16 +4651,11 @@
         }
 
         // Upload mode from browser drag-and-drop / webkitdirectory
-        const initRes = await fetch("/api/projects/upload_init", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            save_dir: saveDir,
-            project_name: projectName,
-            source_name: projectName
-          })
+        const { res: initRes, data: initData } = await postJson("/api/projects/upload_init", {
+          save_dir: saveDir,
+          project_name: projectName,
+          source_name: projectName
         });
-        const initData = await initRes.json();
         if (!initRes.ok || !initData.success) {
           throw new Error(initData.error || "Không khởi tạo được thư mục project mới.");
         }
@@ -4767,15 +4691,10 @@
           progFill.style.width = "92%";
           progText.innerText = "Đang phân tích nhãn YOLO và đồng bộ cấu trúc project...";
 
-          const finRes = await fetch("/api/projects/upload_finalize", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              session_id: sessionId,
-              classes: customClasses
-            })
+          const { res: finRes, data: finData } = await postJson("/api/projects/upload_finalize", {
+            session_id: sessionId,
+            classes: customClasses
           });
-          const finData = await finRes.json();
           if (!finRes.ok || !finData.success) {
             throw new Error(finData.error || "Lỗi hoàn tất tạo project.");
           }
@@ -4787,11 +4706,7 @@
             `Đã tạo project '${finData.active_project.name}' (${finData.scan.imported_images} ảnh, ${finData.scan.imported_objects} nhãn)!`
           );
         } catch (uploadErr) {
-          await fetch("/api/projects/upload_cancel", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ session_id: sessionId })
-          }).catch(() => {});
+          await postJson("/api/projects/upload_cancel", { session_id: sessionId }).catch(() => {});
           throw uploadErr;
         }
       } catch (err) {
@@ -4918,12 +4833,7 @@
 
     async function setInferenceDevice(target) {
       try {
-        const res = await fetch("/api/set_device", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ device: target })
-        });
-        const data = await res.json();
+        const { res, data } = await postJson("/api/set_device", { device: target });
         if (!res.ok || !data.success) {
           if (data && data.active_device) {
             currentSystemInfo = data;
@@ -4972,12 +4882,7 @@
       }
 
       try {
-        const res = await fetch("/api/benchmark_gpu", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ include_sam_large: includeLarge })
-        });
-        const data = await res.json();
+        const { res, data } = await postJson("/api/benchmark_gpu", { include_sam_large: includeLarge });
         if (!res.ok || !data.success) {
           throw new Error(data.error || "Benchmark thất bại.");
         }

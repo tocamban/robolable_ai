@@ -2,10 +2,9 @@ import gc
 import os
 import sys
 import json
-import shutil
-import random
 import subprocess
 import threading
+from functools import wraps
 from urllib.parse import quote
 import torch
 import numpy as np
@@ -18,11 +17,11 @@ from device_manager import (
     get_hardware_info,
     load_device_preference,
     resolve_runtime_device,
+    resolve_weight_path,
     run_device_benchmark,
     save_device_preference,
 )
 from project_manager import (
-    DEFAULT_CLASS_INFO,
     DEFAULT_CLASS_NAMES,
     ProjectManager,
     inspect_dataset_folder,
@@ -32,14 +31,7 @@ from project_manager import (
 app = Flask(__name__, static_folder="static")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
-ANNOTATION_DIR = os.path.join(BASE_DIR, "annotations")
-DATASET_DIR = os.path.join(BASE_DIR, "dataset")
 WEIGHTS_DIR = os.path.join(BASE_DIR, "weights")
-
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(ANNOTATION_DIR, exist_ok=True)
-os.makedirs(DATASET_DIR, exist_ok=True)
 os.makedirs(WEIGHTS_DIR, exist_ok=True)
 
 pm = ProjectManager(BASE_DIR)
@@ -54,36 +46,27 @@ if DEVICE_FALLBACK_NOTE:
 
 # Standardized Classes for Strawberry Ripeness & Anatomy
 CLASSES = list(DEFAULT_CLASS_NAMES)
-CLASS_INFO = [dict(c) for c in DEFAULT_CLASS_INFO]
 
 # Model cache
 MODELS = {}
+SAM_WEIGHTS = {
+    "sam3_vith": "sam2.1_l.pt",
+    "sam2_large": "sam2.1_l.pt",
+    "sam2_base": "sam2.1_b.pt",
+}
 
-def get_weight_path(filename):
-    """Tìm file trọng số trong weights/ hoặc thư mục gốc."""
-    p1 = os.path.join(WEIGHTS_DIR, filename)
-    if os.path.exists(p1):
-        return p1
-    p2 = os.path.join(BASE_DIR, filename)
-    if os.path.exists(p2):
-        return p2
-    return p1
 
 def get_sam_model(model_key):
     if model_key not in MODELS:
-        if model_key in ["sam3_vith", "sam2_large"]:
-            weight_path = get_weight_path("sam2.1_l.pt")
-        elif model_key == "sam2_base":
-            weight_path = get_weight_path("sam2.1_b.pt")
-        else: # sam2_tiny (default recommended)
-            weight_path = get_weight_path("sam2.1_t.pt")
-
+        weight_path = resolve_weight_path(
+            WEIGHTS_DIR, BASE_DIR, SAM_WEIGHTS.get(model_key, "sam2.1_t.pt"), fallback_to_weights=True
+        )
         os.makedirs(os.path.dirname(weight_path), exist_ok=True)
         print(f"[*] Loading SAM model [{model_key}] from {weight_path} onto {DEVICE}...")
         try:
             MODELS[model_key] = SAM(weight_path)
         except Exception:
-            fallback_tiny = get_weight_path("sam2.1_t.pt")
+            fallback_tiny = resolve_weight_path(WEIGHTS_DIR, BASE_DIR, "sam2.1_t.pt", fallback_to_weights=True)
             if weight_path != fallback_tiny and os.path.exists(fallback_tiny):
                 print(f"[!] Fallback to {fallback_tiny}...")
                 MODELS[model_key] = SAM(fallback_tiny)
@@ -222,15 +205,19 @@ def _run_sam_predict(model_id, img_path, **kwargs):
         call_kwargs["device"] = "cpu"
         return model(img_path, **call_kwargs)
 
+def _hardware_info():
+    return get_hardware_info(
+        DEVICE,
+        DEVICE_NAME,
+        PREFERRED_DEVICE,
+        fallback_note=DEVICE_FALLBACK_NOTE,
+    )
+
+
 @app.route("/api/system_info", methods=["GET"])
 def system_info():
     with DEVICE_LOCK:
-        info = get_hardware_info(
-            DEVICE,
-            DEVICE_NAME,
-            PREFERRED_DEVICE,
-            fallback_note=DEVICE_FALLBACK_NOTE,
-        )
+        info = _hardware_info()
     return jsonify(info)
 
 @app.route("/api/set_device", methods=["POST"])
@@ -246,12 +233,6 @@ def api_set_device():
 
     with DEVICE_LOCK:
         if target == "cuda" and not torch.cuda.is_available():
-            info = get_hardware_info(
-                DEVICE,
-                DEVICE_NAME,
-                PREFERRED_DEVICE,
-                fallback_note=DEVICE_FALLBACK_NOTE,
-            )
             return jsonify({
                 "success": False,
                 "code": "CUDA_NOT_AVAILABLE",
@@ -259,7 +240,7 @@ def api_set_device():
                     f"Chưa thể bật GPU vì PyTorch hiện tại ({torch.__version__}) là bản CPU "
                     "(torch.cuda.is_available() == False). Hãy cài PyTorch bản CUDA trước rồi khởi động lại server."
                 ),
-                **info,
+                **_hardware_info(),
             }), 400
 
         new_dev, new_name, fallback_note = resolve_runtime_device(target)
@@ -274,13 +255,7 @@ def api_set_device():
             clear_model_caches()
             print(f"[*] Switched inference device to: {DEVICE} ({DEVICE_NAME}) [pref={PREFERRED_DEVICE}]")
 
-        info = get_hardware_info(
-            DEVICE,
-            DEVICE_NAME,
-            PREFERRED_DEVICE,
-            fallback_note=DEVICE_FALLBACK_NOTE,
-        )
-        return jsonify({"success": True, "switched": changed, **info})
+        return jsonify({"success": True, "switched": changed, **_hardware_info()})
 
 @app.route("/api/benchmark_gpu", methods=["POST"])
 def api_benchmark_gpu():
@@ -301,16 +276,10 @@ def api_benchmark_gpu():
 
     with DEVICE_LOCK:
         clear_model_caches()
-        hw_info = get_hardware_info(
-            DEVICE,
-            DEVICE_NAME,
-            PREFERRED_DEVICE,
-            fallback_note=DEVICE_FALLBACK_NOTE,
-        )
         report = run_device_benchmark(
             weights_dir=WEIGHTS_DIR,
             base_dir=BASE_DIR,
-            hw_info=hw_info,
+            hw_info=_hardware_info(),
             sample_image_path=sample_image_path,
             include_sam_large=include_sam_large,
         )
@@ -498,40 +467,6 @@ def _extract_clean_polygons_from_mask(mask_np, orig_w, orig_h, bbox=None, lasso_
 
     poly = _contour_to_clean_polygon(chosen, orig_w, orig_h)
     return [poly] if len(poly) >= 3 else []
-
-
-def _sanitize_corrupted_polygon(poly, img_w, img_h):
-    """Phát hiện và làm sạch đa giác bị lỗi bắc cầu (merge_multi_segment) khi đã lưu trước đó."""
-    if not poly or len(poly) < 6 or img_w <= 0 or img_h <= 0:
-        return poly, False
-
-    pts_tuples = [(round(float(p[0]), 2), round(float(p[1]), 2)) for p in poly]
-    has_dup_pts = len(set(pts_tuples)) < len(pts_tuples)
-
-    mask = np.zeros((img_h, img_w), dtype=np.uint8)
-    pts_i32 = np.round(np.array(poly, dtype=np.float32)).astype(np.int32).reshape((-1, 1, 2))
-    cv2.fillPoly(mask, [pts_i32], 255)
-    k_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    opened = cv2.morphologyEx(mask, cv2.MORPH_OPEN, k_open, iterations=1)
-    cnts, _ = cv2.findContours(opened, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    multi_island = len(cnts) > 1
-
-    if not has_dup_pts and not multi_island:
-        return poly, False
-
-    k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    cleaned = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, k_close, iterations=1)
-    cnts_clean, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not cnts_clean:
-        cnts_clean = cnts
-    if not cnts_clean:
-        return poly, False
-
-    chosen = max(cnts_clean, key=cv2.contourArea)
-    clean_poly = _contour_to_clean_polygon(chosen, img_w, img_h)
-    if len(clean_poly) < 3:
-        return poly, False
-    return clean_poly, True
 
 
 @app.route("/api/segment", methods=["POST"])
@@ -741,16 +676,25 @@ def handle_annotations(filename):
                 return jsonify(json.load(f))
         return jsonify({"annotations": []})
 
+def _api_action(fn):
+    """Wrap JSON API handlers to map ValueError -> 400 and unexpected errors -> 500."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            res = fn(*args, **kwargs)
+            return jsonify({"success": True, **res}) if isinstance(res, dict) else res
+        except ValueError as ve:
+            return jsonify({"success": False, "error": str(ve)}), 400
+        except Exception as e:
+            print(f"[!] {fn.__name__} error:", e)
+            return jsonify({"success": False, "error": str(e)}), 500
+    return wrapper
+
+
 @app.route("/api/export", methods=["GET", "POST"])
+@_api_action
 def export_yolo():
-    try:
-        res = pm.export_active_yolo()
-        return jsonify(res)
-    except ValueError as ve:
-        return jsonify({"error": str(ve)}), 400
-    except Exception as e:
-        print("[!] Export error:", e)
-        return jsonify({"error": str(e)}), 500
+    return pm.export_active_yolo()
 
 
 # ==============================================================================
@@ -791,146 +735,87 @@ def api_browse_folder():
 
 
 @app.route("/api/projects/analyze_path", methods=["POST"])
+@_api_action
 def api_analyze_local_path():
-    data = request.json or {}
-    source_dir = (data.get("source_dir") or "").strip()
-    try:
-        scan = inspect_dataset_folder(source_dir)
-        scan.pop("entries", None)
-        scan["source_dir"] = os.path.abspath(source_dir)
-        scan["suggested_name"] = os.path.basename(os.path.abspath(source_dir)) or "new_dataset_project"
-        return jsonify({"success": True, **scan})
-    except ValueError as ve:
-        return jsonify({"success": False, "error": str(ve)}), 400
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    source_dir = ((request.json or {}).get("source_dir") or "").strip()
+    scan = inspect_dataset_folder(source_dir)
+    scan.pop("entries", None)
+    scan["source_dir"] = os.path.abspath(source_dir)
+    scan["suggested_name"] = os.path.basename(scan["source_dir"]) or "new_dataset_project"
+    return scan
 
 
 @app.route("/api/projects/create_from_path", methods=["POST"])
+@_api_action
 def api_create_project_from_path():
     data = request.json or {}
-    source_dir = (data.get("source_dir") or "").strip()
-    save_dir = (data.get("save_dir") or "").strip()
-    project_name = (data.get("project_name") or "").strip()
-    custom_classes = data.get("classes")
-    use_default_classes = bool(data.get("use_default_classes", False))
-    try:
-        created = pm.create_project_from_local_folder(
-            source_dir=source_dir,
-            save_dir=save_dir,
-            project_name=project_name,
-            custom_classes=custom_classes,
-            use_default_classes=use_default_classes,
-        )
-        state = pm.list_projects_state()
-        return jsonify({"success": True, **created, **state})
-    except ValueError as ve:
-        return jsonify({"success": False, "error": str(ve)}), 400
-    except Exception as e:
-        print("[!] create_project_from_path error:", e)
-        return jsonify({"success": False, "error": str(e)}), 500
+    created = pm.create_project_from_local_folder(
+        source_dir=(data.get("source_dir") or "").strip(),
+        save_dir=(data.get("save_dir") or "").strip(),
+        project_name=(data.get("project_name") or "").strip(),
+        custom_classes=data.get("classes"),
+        use_default_classes=bool(data.get("use_default_classes", False)),
+    )
+    return {**created, **pm.list_projects_state()}
 
 
 @app.route("/api/projects/upload_init", methods=["POST"])
+@_api_action
 def api_project_upload_init():
     data = request.json or {}
-    save_dir = (data.get("save_dir") or "").strip()
-    project_name = (data.get("project_name") or "").strip()
-    source_name = (data.get("source_name") or "").strip()
-    try:
-        res = pm.init_upload_session(save_dir=save_dir, project_name=project_name, source_name=source_name)
-        return jsonify({"success": True, **res})
-    except ValueError as ve:
-        return jsonify({"success": False, "error": str(ve)}), 400
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    return pm.init_upload_session(
+        save_dir=(data.get("save_dir") or "").strip(),
+        project_name=(data.get("project_name") or "").strip(),
+        source_name=(data.get("source_name") or "").strip(),
+    )
 
 
 @app.route("/api/projects/upload_chunk", methods=["POST"])
+@_api_action
 def api_project_upload_chunk():
     session_id = request.form.get("session_id", "")
     files = request.files.getlist("files")
     rel_paths = request.form.getlist("relative_paths")
-    paired = []
-    for idx, fobj in enumerate(files):
-        rpath = rel_paths[idx] if idx < len(rel_paths) else fobj.filename
-        paired.append((rpath, fobj))
-    try:
-        res = pm.add_upload_chunk(session_id, paired)
-        return jsonify({"success": True, **res})
-    except ValueError as ve:
-        return jsonify({"success": False, "error": str(ve)}), 400
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    paired = [(rel_paths[i] if i < len(rel_paths) else fobj.filename, fobj) for i, fobj in enumerate(files)]
+    return pm.add_upload_chunk(session_id, paired)
 
 
 @app.route("/api/projects/upload_finalize", methods=["POST"])
+@_api_action
 def api_project_upload_finalize():
     data = request.json or {}
-    session_id = data.get("session_id", "")
-    custom_classes = data.get("classes")
-    use_default_classes = bool(data.get("use_default_classes", False))
-    try:
-        created = pm.finalize_upload_session(
-            session_id=session_id,
-            custom_classes=custom_classes,
-            use_default_classes=use_default_classes,
-        )
-        state = pm.list_projects_state()
-        return jsonify({"success": True, **created, **state})
-    except ValueError as ve:
-        return jsonify({"success": False, "error": str(ve)}), 400
-    except Exception as e:
-        print("[!] upload_finalize error:", e)
-        return jsonify({"success": False, "error": str(e)}), 500
+    created = pm.finalize_upload_session(
+        session_id=data.get("session_id", ""),
+        custom_classes=data.get("classes"),
+        use_default_classes=bool(data.get("use_default_classes", False)),
+    )
+    return {**created, **pm.list_projects_state()}
 
 
 @app.route("/api/projects/upload_cancel", methods=["POST"])
 def api_project_upload_cancel():
-    data = request.json or {}
-    session_id = data.get("session_id", "")
-    pm.cancel_upload_session(session_id)
+    pm.cancel_upload_session((request.json or {}).get("session_id", ""))
     return jsonify({"success": True})
 
 
 @app.route("/api/projects/switch", methods=["POST"])
+@_api_action
 def api_switch_project():
     data = request.json or {}
-    project_id = data.get("project_id")
-    project_dir = data.get("project_dir")
-    try:
-        state = pm.switch_project(project_id=project_id, project_dir=project_dir)
-        return jsonify({"success": True, **state})
-    except ValueError as ve:
-        return jsonify({"success": False, "error": str(ve)}), 400
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    return pm.switch_project(project_id=data.get("project_id"), project_dir=data.get("project_dir"))
 
 
 @app.route("/api/projects/open_folder", methods=["POST"])
+@_api_action
 def api_open_project_folder():
-    data = request.json or {}
-    project_dir = (data.get("project_dir") or "").strip()
-    try:
-        state = pm.open_existing_project_folder(project_dir)
-        return jsonify({"success": True, **state})
-    except ValueError as ve:
-        return jsonify({"success": False, "error": str(ve)}), 400
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    project_dir = ((request.json or {}).get("project_dir") or "").strip()
+    return pm.open_existing_project_folder(project_dir)
 
 
 @app.route("/api/projects/remove", methods=["POST"])
+@_api_action
 def api_remove_project():
-    data = request.json or {}
-    project_id = data.get("project_id", "")
-    try:
-        state = pm.remove_from_registry(project_id)
-        return jsonify({"success": True, **state})
-    except ValueError as ve:
-        return jsonify({"success": False, "error": str(ve)}), 400
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    return pm.remove_from_registry((request.json or {}).get("project_id", ""))
 
 if __name__ == "__main__":
     print(f"[*] Starting RoboLabel AI on http://127.0.0.1:5050 ...")

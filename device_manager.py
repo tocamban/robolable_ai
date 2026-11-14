@@ -13,6 +13,8 @@ import torch
 import torch.nn as nn
 from PIL import Image
 
+from project_manager import atomic_write_json
+
 try:
     import psutil
 except Exception:
@@ -22,16 +24,18 @@ VALID_DEVICE_PREFERENCES = {"auto", "cpu", "cuda"}
 DEVICE_CONFIG_FILENAME = "device_config.json"
 
 
-def _weight_file_path(weights_dir: str, base_dir: str, filename: str) -> str | None:
+def resolve_weight_path(
+    weights_dir: str,
+    base_dir: str,
+    filename: str,
+    fallback_to_weights: bool = False,
+) -> str | None:
     """Resolve an existing weight file path in weights/ or base_dir."""
-    candidates = [
-        os.path.join(weights_dir, filename),
-        os.path.join(base_dir, filename),
-    ]
+    candidates = (os.path.join(weights_dir, filename), os.path.join(base_dir, filename))
     for path in candidates:
         if os.path.exists(path):
             return path
-    return None
+    return candidates[0] if fallback_to_weights else None
 
 
 def _file_size_mb(path: str | None) -> float | None:
@@ -68,12 +72,7 @@ def save_device_preference(base_dir: str, preference: str) -> None:
     pref = str(preference or "auto").strip().lower()
     if pref not in VALID_DEVICE_PREFERENCES:
         raise ValueError(f"Thiết bị không hợp lệ: {preference}")
-    cfg_path = os.path.join(base_dir, DEVICE_CONFIG_FILENAME)
-    tmp_path = f"{cfg_path}.tmp"
-    payload = {"preferred_device": pref}
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, ensure_ascii=False)
-    os.replace(tmp_path, cfg_path)
+    atomic_write_json(os.path.join(base_dir, DEVICE_CONFIG_FILENAME), {"preferred_device": pref})
 
 
 def resolve_runtime_device(preference: str) -> tuple[str, str, str | None]:
@@ -573,9 +572,9 @@ def evaluate_gpu_suitability(
     cuda_available = bool(hw_info.get("cuda_available"))
     gpu_name = hw_info.get("gpu_name") or "Chưa phát hiện GPU NVIDIA"
 
-    sam_tiny_path = _weight_file_path(weights_dir, base_dir, "sam2.1_t.pt")
-    sam_large_path = _weight_file_path(weights_dir, base_dir, "sam2.1_l.pt")
-    clip_path = _weight_file_path(weights_dir, base_dir, os.path.join("clip", "ViT-B-32.pt"))
+    sam_tiny_path = resolve_weight_path(weights_dir, base_dir, "sam2.1_t.pt")
+    sam_large_path = resolve_weight_path(weights_dir, base_dir, "sam2.1_l.pt")
+    clip_path = resolve_weight_path(weights_dir, base_dir, os.path.join("clip", "ViT-B-32.pt"))
 
     def _model_vram_status(est_need_mb: float, measured_peak_mb: float | None = None, oom: bool = False):
         if oom:
@@ -589,55 +588,31 @@ def evaluate_gpu_suitability(
             return "tight", "Vừa sát ngưỡng VRAM (nên đóng app đồ họa khác hoặc ưu tiên Tiny)"
         return "no_fit", "Thiếu VRAM, dễ tràn bộ nhớ GPU"
 
+    specs = (
+        ("sam_tiny", "sam2_tiny", "SAM 2.1 (Tiny) - Khuyên dùng", sam_tiny_path, 74.5, 1300.0),
+        ("clip", "clip_vit_b32", "CLIP (ViT-B/32) - Tự nhận diện nhãn", clip_path, 337.6, 950.0),
+        ("sam_large", "sam2_large", "SAM 2.1 (Large) - Chi tiết cao", sam_large_path, 428.4, 3600.0),
+    )
+    model_compatibility = []
+    for bench_key, model_id, display_name, w_path, default_mb, est_vram_mb in specs:
+        gpu_m = gpu_bench.get(bench_key) or {}
+        cpu_m = cpu_bench.get(bench_key) or {}
+        peak_vram = gpu_m.get("peak_vram_mb")
+        status, note = _model_vram_status(est_vram_mb, peak_vram, bool(gpu_m.get("oom")))
+        model_compatibility.append({
+            "id": model_id,
+            "name": display_name,
+            "weight_mb": _file_size_mb(w_path) or default_mb,
+            "est_vram_mb": int(est_vram_mb),
+            "measured_peak_vram_mb": peak_vram,
+            "cpu_ms": cpu_m.get("avg_ms"),
+            "gpu_ms": gpu_m.get("avg_ms"),
+            "status": status,
+            "note": note,
+        })
+
+    tiny_status = model_compatibility[0]["status"]
     gpu_sam_tiny = gpu_bench.get("sam_tiny") or {}
-    gpu_sam_large = gpu_bench.get("sam_large") or {}
-    gpu_clip = gpu_bench.get("clip") or {}
-
-    tiny_status, tiny_note = _model_vram_status(
-        1300.0, gpu_sam_tiny.get("peak_vram_mb"), bool(gpu_sam_tiny.get("oom"))
-    )
-    large_status, large_note = _model_vram_status(
-        3600.0, gpu_sam_large.get("peak_vram_mb"), bool(gpu_sam_large.get("oom"))
-    )
-    clip_status, clip_note = _model_vram_status(
-        950.0, gpu_clip.get("peak_vram_mb"), bool(gpu_clip.get("oom"))
-    )
-
-    model_compatibility = [
-        {
-            "id": "sam2_tiny",
-            "name": "SAM 2.1 (Tiny) - Khuyên dùng",
-            "weight_mb": _file_size_mb(sam_tiny_path) or 74.5,
-            "est_vram_mb": 1300,
-            "measured_peak_vram_mb": gpu_sam_tiny.get("peak_vram_mb"),
-            "cpu_ms": (cpu_bench.get("sam_tiny") or {}).get("avg_ms"),
-            "gpu_ms": gpu_sam_tiny.get("avg_ms"),
-            "status": tiny_status,
-            "note": tiny_note,
-        },
-        {
-            "id": "clip_vit_b32",
-            "name": "CLIP (ViT-B/32) - Tự nhận diện nhãn",
-            "weight_mb": _file_size_mb(clip_path) or 337.6,
-            "est_vram_mb": 950,
-            "measured_peak_vram_mb": gpu_clip.get("peak_vram_mb"),
-            "cpu_ms": (cpu_bench.get("clip") or {}).get("avg_ms"),
-            "gpu_ms": gpu_clip.get("avg_ms"),
-            "status": clip_status,
-            "note": clip_note,
-        },
-        {
-            "id": "sam2_large",
-            "name": "SAM 2.1 (Large) - Chi tiết cao",
-            "weight_mb": _file_size_mb(sam_large_path) or 428.4,
-            "est_vram_mb": 3600,
-            "measured_peak_vram_mb": gpu_sam_large.get("peak_vram_mb"),
-            "cpu_ms": (cpu_bench.get("sam_large") or {}).get("avg_ms"),
-            "gpu_ms": gpu_sam_large.get("avg_ms"),
-            "status": large_status,
-            "note": large_note,
-        },
-    ]
 
     cpu_sam_ms = (cpu_bench.get("sam_tiny") or {}).get("avg_ms")
     gpu_sam_ms = gpu_sam_tiny.get("avg_ms")
@@ -719,37 +694,29 @@ def run_device_benchmark(
     started = time.perf_counter()
     img_path, should_cleanup_img = _pick_benchmark_image(sample_image_path)
 
-    sam_tiny_path = _weight_file_path(weights_dir, base_dir, "sam2.1_t.pt")
-    sam_large_path = _weight_file_path(weights_dir, base_dir, "sam2.1_l.pt")
-    clip_path = _weight_file_path(weights_dir, base_dir, os.path.join("clip", "ViT-B-32.pt"))
+    sam_tiny_path = resolve_weight_path(weights_dir, base_dir, "sam2.1_t.pt")
+    sam_large_path = resolve_weight_path(weights_dir, base_dir, "sam2.1_l.pt")
+    clip_path = resolve_weight_path(weights_dir, base_dir, os.path.join("clip", "ViT-B-32.pt"))
 
-    try:
-        cpu_bench = {
+    def _bench_suite(dev: str, tensor_runs: int, sam_tiny_runs: int, clip_runs: int, sam_large_runs: int) -> dict:
+        return {
             "executed": True,
-            "tensor": _benchmark_tensor_device("cpu", warmup=1, runs=5),
-            "sam_tiny": _benchmark_sam_model(sam_tiny_path, img_path, "cpu", runs=2),
-            "clip": _benchmark_clip_model(clip_path, img_path, "cpu", runs=3),
+            "tensor": _benchmark_tensor_device(dev, warmup=(2 if dev == "cuda" else 1), runs=tensor_runs),
+            "sam_tiny": _benchmark_sam_model(sam_tiny_path, img_path, dev, runs=sam_tiny_runs),
+            "clip": _benchmark_clip_model(clip_path, img_path, dev, runs=clip_runs),
             "sam_large": (
-                _benchmark_sam_model(sam_large_path, img_path, "cpu", runs=1)
+                _benchmark_sam_model(sam_large_path, img_path, dev, runs=sam_large_runs)
                 if include_sam_large
                 else {"executed": False, "skipped": True}
             ),
         }
 
-        if hw_info.get("cuda_available"):
-            gpu_bench = {
-                "executed": True,
-                "tensor": _benchmark_tensor_device("cuda", warmup=2, runs=8),
-                "sam_tiny": _benchmark_sam_model(sam_tiny_path, img_path, "cuda", runs=3),
-                "clip": _benchmark_clip_model(clip_path, img_path, "cuda", runs=5),
-                "sam_large": (
-                    _benchmark_sam_model(sam_large_path, img_path, "cuda", runs=2)
-                    if include_sam_large
-                    else {"executed": False, "skipped": True}
-                ),
-            }
-        else:
-            gpu_bench = {
+    try:
+        cpu_bench = _bench_suite("cpu", 5, 2, 3, 1)
+        gpu_bench = (
+            _bench_suite("cuda", 8, 3, 5, 2)
+            if hw_info.get("cuda_available")
+            else {
                 "executed": False,
                 "reason": (
                     f"PyTorch hiện tại ({hw_info.get('torch_version')}) chưa có CUDA backend "
@@ -757,6 +724,7 @@ def run_device_benchmark(
                 ),
                 "install_command": hw_info.get("cuda_install_command"),
             }
+        )
 
         suitability = evaluate_gpu_suitability(hw_info, cpu_bench, gpu_bench, weights_dir, base_dir)
         elapsed_sec = round(time.perf_counter() - started, 2)

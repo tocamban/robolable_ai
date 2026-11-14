@@ -1,6 +1,6 @@
 # RoboLabel AI — Studio Gán Nhãn & Phân Đoạn Ảnh Tự Động Cho YOLO
 
-> **Phiên bản hiện tại:** `v1.11` — Hiển thị badge phiên bản trên Header & hỗ trợ tự động cập nhật 1-click qua `update.bat`.
+> **Phiên bản hiện tại:** `v1.12` — Hiển thị badge phiên bản trên Header & hỗ trợ tự động cập nhật 1-click qua `update.bat`.
 
 Ứng dụng web chạy cục bộ giúp gán nhãn dữ liệu hình ảnh bán tự động cho **YOLO Instance Segmentation** (Polygon) và **YOLO Object Detection** (Bounding Box), tích hợp **SAM 2.1 (Segment Anything)**, **CLIP ViT-B/32** (tự động nhận dạng class), quản lý nhiều Dataset Project kèm **Auto-Save**, và công cụ **Chuyển đổi GPU/CPU + Benchmark GPU**.
 
@@ -92,7 +92,7 @@ Từ trái sang phải gồm các cụm điều khiển:
    - Bấm **Chạy Benchmark GPU** để đo tốc độ thực tế của SAM 2.1, CLIP và kiểm tra mức VRAM khả dụng.
 5. **Trạng thái Auto-Save (`Đã lưu tự động`):** Báo hiệu mọi thao tác đều được đồng bộ xuống ổ đĩa.
 6. **Cụm thao tác bên phải:**
-   - Nhãn phiên bản (ví dụ `v1.11`).
+   - Nhãn phiên bản (ví dụ `v1.12`).
    - **Hướng dẫn (`?` / `F1`):** Xem sơ đồ giao diện và hình minh họa từng công cụ.
    - **Quản lý Project:** Tạo Project mới từ thư mục ảnh/dataset hoặc mở lại Project đã lưu.
    - **Export YOLO:** Xuất bộ dữ liệu hoàn chỉnh sang cấu trúc `train/val` chuẩn YOLO kèm `data.yaml`.
