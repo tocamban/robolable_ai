@@ -1,8 +1,48 @@
 # RoboLabel AI — Studio Gán Nhãn & Phân Đoạn Ảnh Tự Động Cho YOLO
 
+![Version](https://img.shields.io/badge/Version-v1.2-7c3aed?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.10%20--%203.14-3776ab?style=flat-square&logo=python&logoColor=white)
+![AI](https://img.shields.io/badge/AI-SAM%202.1%20%2B%20CLIP%20ViT--B%2F32-0ea5e9?style=flat-square)
+![Export](https://img.shields.io/badge/Export-YOLO--Seg%20(.txt)%20%26%20Labelme%20(.json)-10b981?style=flat-square)
+![Compute](https://img.shields.io/badge/Compute-NVIDIA%20CUDA%20%2F%20CPU-76b900?style=flat-square)
+
 > **Phiên bản hiện tại:** `v1.2` — Hiển thị badge phiên bản trên Header & hỗ trợ tự động cập nhật 1-click qua `update.bat`.
 
-Ứng dụng web chạy cục bộ giúp gán nhãn dữ liệu hình ảnh bán tự động cho **YOLO Instance Segmentation** (Polygon) và **YOLO Object Detection** (Bounding Box), tích hợp **SAM 2.1 (Segment Anything)**, **CLIP ViT-B/32** (tự động nhận dạng class), gán **`Group ID` theo từng vùng/cụm**, xuất nhãn tùy chọn sang **YOLO `.txt`** và **Labelme/X-AnyLabeling `.json`**, quản lý nhiều Dataset Project kèm **Auto-Save**, và công cụ **Chuyển đổi GPU/CPU + Benchmark GPU**.
+---
+
+## Giới thiệu dự án
+
+**RoboLabel AI** là studio gán nhãn dữ liệu thị giác máy tính chạy **cục bộ 100% (offline)** trên nền tảng Flask + HTML5 Canvas, thiết kế cho bài toán **YOLO Instance Segmentation (Polygon)** và **YOLO Object Detection (Bounding Box)**.
+
+Công cụ giúp rút ngắn tối đa thời gian vẽ thủ công khi cần gán nhãn các vật thể đa bộ phận — đặc biệt phù hợp cho dữ liệu nông nghiệp/robot thu hoạch (ví dụ cụm quả dâu tây gồm thịt quả `unripe`, `almost_ripe`, `ripe`, đài hoa `calyx` và cuống `stem`) cũng như mọi bộ dữ liệu phân đoạn tùy chỉnh khác.
+
+### Tính năng cốt lõi
+
+| Nhóm chức năng | Mô tả chi tiết |
+| :--- | :--- |
+| **Phân đoạn AI tức thì** | Tích hợp **SAM 2.1 (Tiny & Large)** qua **AI Smart Box (`S`)**, **AI Lasso** (khoanh tự do khi nhiều vật thể dính nhau) và **AI Point** — tự tách đường viền mượt, lọc nhiễu đảo nhỏ. |
+| **Tự nhận diện Class** | Bật **CLIP ViT-B/32** để tự phân tích vùng vừa tách và gán tên lớp phù hợp (hoặc tắt để gán thủ công theo class đang chọn). |
+| **Tinh chỉnh Polygon mượt** | **Cục tẩy (`E`)** gọt viền và giữ nguyên `group_id` khi cắt rời mảnh bị che; **Đắp thêm / Vẽ tay (`P`)** tự gộp Union; **Kéo đỉnh (`V`)**; **Hoàn tác (`Ctrl + Z`)** tối đa 30 bước. |
+| **Gán `Group ID` theo cụm** | Gắn ID nhóm trước khi vẽ (`-` / `+1` / `×`) hoặc sửa trực tiếp từng dòng để liên kết quả–đài–cuống (kể cả cuống bị lá che đứt 2 đoạn), tô viền đứt nét đồng bộ để kiểm tra nhầm cụm. |
+| **Xuất `.txt` & `.json` tùy chọn** | Xuất **YOLO `.txt`** (tọa độ chuẩn hóa `[0, 1]`, tự lược bỏ `group_id`), **Labelme / X-AnyLabeling `.json`** (pixel tuyệt đối, giữ `group_id`), hoặc **cả hai**, chọn cấu trúc `train/val` hoặc thư mục phẳng, hỗ trợ preset `Chuẩn 5 lớp`. |
+| **Quản lý Project & Auto-Save** | Tạo nhiều Project độc lập (kéo thả thư mục hoặc chọn từ ổ đĩa), tự nhận diện dataset ảnh thuần / YOLO Box / YOLO Seg, đồng bộ Auto-Save liên tục. |
+| **Điều phối GPU CUDA / CPU** | Tự dò GPU NVIDIA (`cu126` / `cu124`), chuyển đổi linh hoạt GPU/CPU ngay trên Header, tự lùi về CPU khi tràn VRAM và tích hợp **Benchmark GPU**. |
+
+### Điểm mới nổi bật trong phiên bản `v1.2`
+
+- Bổ sung hệ thống gán **`Group ID` theo từng vùng/cụm** (hỗ trợ cả thao tác gắn trước khi vẽ lẫn sửa inline trong danh sách đối tượng và hiển thị viền đứt nét liên cụm).
+- Thêm hộp thoại **Xuất nhãn tùy chọn (`.txt` / `.json` / `.zip`)** cho toàn bộ Project hoặc ảnh đang mở, kèm preset thứ tự lớp **`Chuẩn 5 lớp (0:unripe → 4:calyx)`** và bảo vệ ghi đè thư mục gốc.
+- Làm mới modal **Hướng dẫn sử dụng 5 tab (`?` / `F1`)** ngay trong app và hoàn thiện bộ kiểm tra tự động `tests/self_check.py`.
+
+### Mục lục nhanh
+
+1. [Cấu hình Tối thiểu, Khuyến nghị & Yêu cầu phần mềm](#1-cấu-hình-tối-thiểu-khuyến-nghị--yêu-cầu-phần-mềm)
+2. [Cài đặt, Khởi chạy & Cập nhật (`setup.bat`, `run_app.bat`, `update.bat`)](#2-cài-đặt-khởi-chạy--cập-nhật)
+3. [Tổng quan giao diện làm việc](#3-tổng-quan-giao-diện-làm-việc)
+4. [Hướng dẫn chi tiết từng bước sử dụng](#4-hướng-dẫn-chi-tiết-từng-bước-sử-dụng) • [Đánh `Group ID` theo cụm](#45-hướng-dẫn-đánh-group-id-theo-từng-vùngcụm) • [Xuất `.txt` / `.json` tùy chọn](#46-auto-save--xuất-nhãn-tùy-chọn-txt--json)
+5. [Cấu trúc thư mục dự án](#5-cấu-trúc-thư-mục-dự-án)
+6. [Xử lý các lỗi thường gặp](#6-xử-lý-các-lỗi-thường-gặp)
+7. [Đóng gói & Đẩy thay đổi lên GitHub](#7-đóng-gói--đẩy-thay-đổi-lên-github-dành-cho-người-phát-triển)
 
 ---
 
