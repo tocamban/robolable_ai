@@ -1,9 +1,11 @@
 """Self-check covering device_manager, project_manager, Flask routes, and optional live SAM+CLIP smoke."""
 
 import io
+import json
 import os
 import sys
 import tempfile
+import zipfile
 
 from PIL import Image, ImageDraw
 
@@ -93,15 +95,106 @@ def check_project_manager(tmp):
     assert os.path.exists(os.path.join(pdir, "data.yaml"))
     assert os.path.exists(os.path.join(pdir, "classes.txt"))
 
-    synced = mgr.sync_image_annotations(
-        "sample.jpg",
-        [{"class_name": "ripe", "type": "polygon", "polygon": [[10, 10], [50, 10], [50, 50], [10, 50]]}],
-    )
-    assert synced["success"] is True and synced["count"] == 1
+    # Group ID normalization assertions
+    assert pm_mod.normalize_group_id(1) == 1
+    assert pm_mod.normalize_group_id("2") == 2
+    assert pm_mod.normalize_group_id(0) == 0
+    assert pm_mod.normalize_group_id("") is None
+    assert pm_mod.normalize_group_id(None) is None
+    assert pm_mod.normalize_group_id(True) is None
+    assert pm_mod.normalize_group_id(-1) is None
+    assert pm_mod.normalize_group_id("-3") is None
+
+    sample_anns = [
+        {"class_name": "ripe", "group_id": 1, "type": "polygon", "polygon": [[12, 10], [60, 10], [60, 50], [12, 50]]},
+        {"class_name": "calyx", "group_id": "1", "type": "polygon", "polygon": [[12, 5], [60, 5], [60, 10], [12, 10]]},
+        # Split stem into two polygons sharing group_id=1
+        {"class_name": "stem", "group_id": 1, "type": "polygon", "polygon": [[30, 1], [36, 1], [36, 5], [30, 5]]},
+        {"class_name": "stem", "group_id": 1, "type": "polygon", "polygon": [[40, 1], [48, 1], [48, 4], [40, 4]]},
+        # Bbox with group_id=0 (must preserve falsy 0) + ungrouped polygon
+        {"class_name": "ripe", "group_id": 0, "type": "bbox", "bbox": [70, 20, 100, 60]},
+        {"class_name": "unripe", "group_id": None, "type": "polygon", "polygon": [[72, 65], [96, 65], [96, 90], [72, 90]]},
+    ]
+    synced = mgr.sync_image_annotations("sample.jpg", sample_anns)
+    assert synced["success"] is True and synced["count"] == 6
+
+    with open(os.path.join(pdir, "annotations", "sample.jpg.json"), "r", encoding="utf-8") as f:
+        saved_items = json.load(f)["annotations"]
+    assert len(saved_items) == 6
+    assert saved_items[0]["group_id"] == 1
+    assert saved_items[1]["group_id"] == 1
+    assert saved_items[4]["group_id"] == 0
+    assert "group_id" not in saved_items[5]
 
     exported = mgr.export_active_yolo()
     assert exported["success"] is True
     assert os.path.exists(exported["data_yaml"])
+
+    # Export both (.txt YOLO + .json Labelme) in flat layout with custom 5-class order
+    custom_order = ["unripe", "almost_ripe", "ripe", "stem", "calyx"]
+    flat_out = os.path.join(tmp, "export_flat")
+    exp_flat = mgr.export_dataset(
+        export_format="both",
+        layout="flat",
+        output_dir=flat_out,
+        class_names=custom_order,
+    )
+    assert exp_flat["success"] is True and exp_flat["format"] == "both" and exp_flat["layout"] == "flat"
+    assert exp_flat["stats"]["grouped_annotations"] == 5
+    assert exp_flat["classes"] == custom_order
+
+    flat_json_path = os.path.join(flat_out, "sample.json")
+    flat_txt_path = os.path.join(flat_out, "sample.txt")
+    assert os.path.exists(flat_json_path) and os.path.exists(flat_txt_path)
+    with open(flat_json_path, "r", encoding="utf-8") as f:
+        lm_data = json.load(f)
+    assert lm_data["imagePath"] == "sample.jpg"
+    assert lm_data["imageWidth"] == 120 and lm_data["imageHeight"] == 100
+    assert len(lm_data["shapes"]) == 6
+    assert lm_data["shapes"][2]["label"] == "stem" and lm_data["shapes"][2]["group_id"] == 1
+    assert lm_data["shapes"][3]["label"] == "stem" and lm_data["shapes"][3]["group_id"] == 1
+    assert lm_data["shapes"][4]["shape_type"] == "rectangle" and lm_data["shapes"][4]["group_id"] == 0
+    assert lm_data["shapes"][5]["group_id"] is None
+
+    with open(flat_txt_path, "r", encoding="utf-8") as f:
+        txt_lines = [ln.strip() for ln in f.read().splitlines() if ln.strip()]
+    assert len(txt_lines) == 6
+    assert "group_id" not in "\n".join(txt_lines)
+    # 0:unripe, 1:almost_ripe, 2:ripe, 3:stem, 4:calyx
+    assert txt_lines[0].startswith("2 0.100000 0.100000 ")
+    assert txt_lines[1].startswith("4 ")
+    assert txt_lines[2].startswith("3 ") and txt_lines[3].startswith("3 ")
+    assert txt_lines[4].startswith("2 ")
+    assert txt_lines[5].startswith("0 ")
+
+    # Split layout into custom dir with both formats
+    split_out = os.path.join(tmp, "export_split")
+    exp_split = mgr.export_dataset(
+        export_format="both",
+        layout="split",
+        output_dir=split_out,
+        class_names=custom_order,
+    )
+    assert exp_split["success"] is True and os.path.exists(exp_split["data_yaml"])
+    assert os.path.exists(os.path.join(split_out, "labels", "train", "sample.txt"))
+    assert os.path.exists(os.path.join(split_out, "annotations_json", "train", "sample.json"))
+
+    # Subset-class export consistency: grouped_annotations never exceeds total_annotations
+    subset_out = os.path.join(tmp, "export_subset")
+    exp_sub = mgr.export_dataset(export_format="both", layout="flat", output_dir=subset_out, class_names=["ripe"])
+    assert exp_sub["stats"]["total_annotations"] == 6
+    assert exp_sub["stats"]["grouped_annotations"] == 5
+    exp_sub_txt = mgr.export_dataset(export_format="txt", layout="flat", output_dir=subset_out, class_names=["ripe"])
+    assert exp_sub_txt["stats"]["total_annotations"] == 2
+    assert exp_sub_txt["stats"]["grouped_annotations"] == 2
+
+    # Protected directory guard
+    for bad_dir in (pdir, os.path.join(pdir, "images")):
+        try:
+            mgr.export_dataset(export_format="json", layout="flat", output_dir=bad_dir)
+            assert False, f"expected ValueError for protected output_dir {bad_dir}"
+        except ValueError:
+            pass
 
     mgr.remove_from_registry(pid)
     reopened = mgr.open_existing_project_folder(pdir)
@@ -142,10 +235,42 @@ def check_flask_routes(tmp):
 
         save_ann = client.post(
             "/api/annotations/up_test.jpg",
-            json={"annotations": [{"class_name": "ripe", "type": "polygon", "polygon": [[5, 5], [30, 5], [30, 30]]}]},
+            json={"annotations": [
+                {"class_name": "ripe", "group_id": 2, "type": "polygon", "polygon": [[5, 5], [30, 5], [30, 30]]},
+                {"class_name": "stem", "group_id": 2, "type": "polygon", "polygon": [[14, 1], [18, 1], [18, 5], [14, 5]]},
+            ]},
         )
-        assert save_ann.status_code == 200 and save_ann.get_json()["count"] == 1
-        assert len(client.get("/api/annotations/up_test.jpg").get_json()["annotations"]) == 1
+        assert save_ann.status_code == 200 and save_ann.get_json()["count"] == 2
+        loaded_anns = client.get("/api/annotations/up_test.jpg").get_json()["annotations"]
+        assert len(loaded_anns) == 2 and loaded_anns[0]["group_id"] == 2 and loaded_anns[1]["group_id"] == 2
+
+        # Single image export endpoints (.json, .txt, .zip, and invalid args)
+        dl_json = client.post("/api/export_image", json={"image_name": "up_test.jpg", "format": "json"})
+        assert dl_json.status_code == 200
+        dl_lm = json.loads(dl_json.data.decode("utf-8"))
+        assert dl_lm["imagePath"] == "up_test.jpg" and len(dl_lm["shapes"]) == 2 and dl_lm["shapes"][0]["group_id"] == 2
+
+        dl_txt = client.post("/api/export_image", json={
+            "image_name": "up_test.jpg",
+            "format": "txt",
+            "classes": ["unripe", "almost_ripe", "ripe", "stem", "calyx"],
+        })
+        assert dl_txt.status_code == 200
+        dl_txt_lines = dl_txt.data.decode("utf-8").strip().splitlines()
+        assert len(dl_txt_lines) == 2 and dl_txt_lines[0].startswith("2 ") and dl_txt_lines[1].startswith("3 ")
+
+        dl_both = client.post("/api/export_image", json={
+            "image_name": "up_test.jpg",
+            "format": "both",
+            "classes": "unripe, almost_ripe, ripe, stem, calyx",
+        })
+        assert dl_both.status_code == 200
+        with zipfile.ZipFile(io.BytesIO(dl_both.data), "r") as zf:
+            names = set(zf.namelist())
+            assert {"up_test.json", "up_test.txt", "classes.txt"}.issubset(names)
+
+        assert client.post("/api/export_image", json={"image_name": "../bad.jpg", "format": "json"}).status_code == 400
+        assert client.post("/api/export_image", json={"image_name": "missing.jpg", "format": "json"}).status_code == 404
 
         # Device & polygon editing
         bad_dev = client.post("/api/set_device", json={"device": "invalid"})
@@ -202,6 +327,23 @@ def check_flask_routes(tmp):
 
         exported = client.get("/api/export")
         assert exported.status_code == 200 and exported.get_json()["success"] is True
+
+        api_flat_dir = os.path.join(tmp, "api_export_flat")
+        exported_post = client.post("/api/export", json={
+            "format": "both",
+            "layout": "flat",
+            "output_dir": api_flat_dir,
+            "classes": ["unripe", "almost_ripe", "ripe", "stem", "calyx"],
+        })
+        exp_data = exported_post.get_json()
+        assert exported_post.status_code == 200 and exp_data["success"] is True
+        assert os.path.exists(os.path.join(api_flat_dir, "sample.json"))
+        assert os.path.exists(os.path.join(api_flat_dir, "sample.txt"))
+        assert client.post("/api/export", json={
+            "format": "json",
+            "layout": "flat",
+            "output_dir": cdata["project"]["project_dir"],
+        }).status_code == 400
 
         if dm.resolve_weight_path(robolabel_app.WEIGHTS_DIR, robolabel_app.BASE_DIR, "sam2.1_t.pt"):
             seg = client.post("/api/segment", json={

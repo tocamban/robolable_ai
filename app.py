@@ -1,7 +1,9 @@
 import gc
+import io
 import os
 import sys
 import json
+import zipfile
 import subprocess
 import threading
 from functools import wraps
@@ -9,7 +11,7 @@ from urllib.parse import quote
 import torch
 import numpy as np
 import cv2
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from PIL import Image
 from ultralytics import SAM
 
@@ -694,7 +696,59 @@ def _api_action(fn):
 @app.route("/api/export", methods=["GET", "POST"])
 @_api_action
 def export_yolo():
-    return pm.export_active_yolo()
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        export_format = data.get("format", "txt")
+        layout = data.get("layout", "split")
+        output_dir = data.get("output_dir")
+        classes = data.get("classes")
+    else:
+        export_format = request.args.get("format", "txt")
+        layout = request.args.get("layout", "split")
+        output_dir = request.args.get("output_dir")
+        classes = request.args.get("classes")
+    return pm.export_dataset(
+        export_format=export_format,
+        layout=layout,
+        output_dir=output_dir,
+        class_names=classes,
+    )
+
+
+@app.route("/api/export_image", methods=["POST"])
+def export_single_image():
+    data = request.get_json(silent=True) or {}
+    try:
+        res = pm.export_single_image(
+            image_name=data.get("image_name", ""),
+            export_format=data.get("format", "both"),
+            class_names=data.get("classes"),
+        )
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except FileNotFoundError as fe:
+        return jsonify({"success": False, "error": str(fe)}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    fmt = res["format"]
+    stem = res["stem"]
+    buf = io.BytesIO()
+    if fmt == "json":
+        buf.write(res["json_content"].encode("utf-8"))
+        buf.seek(0)
+        return send_file(buf, mimetype="application/json", as_attachment=True, download_name=f"{stem}.json")
+    if fmt == "txt":
+        buf.write(res["txt_content"].encode("utf-8"))
+        buf.seek(0)
+        return send_file(buf, mimetype="text/plain; charset=utf-8", as_attachment=True, download_name=f"{stem}.txt")
+
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(f"{stem}.json", res["json_content"])
+        zf.writestr(f"{stem}.txt", res["txt_content"])
+        zf.writestr("classes.txt", res["classes_txt"])
+    buf.seek(0)
+    return send_file(buf, mimetype="application/zip", as_attachment=True, download_name=f"{stem}_labels.zip")
 
 
 # ==============================================================================

@@ -123,7 +123,7 @@
 
     /* Left Sidebar: Annotations */
     .sidebar-left {
-      width: 250px;
+      width: 282px;
       border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
@@ -609,7 +609,7 @@
     }
 
     .ann-class-select {
-      padding: 2px 6px;
+      padding: 2px 5px;
       border: 1px solid #cbd5e1;
       border-radius: 4px;
       font-size: 11px;
@@ -618,11 +618,118 @@
       background: #ffffff;
       cursor: pointer;
       outline: none;
-      max-width: 105px;
+      max-width: 92px;
+      min-width: 0;
     }
 
     .ann-class-select:focus {
       border-color: var(--primary);
+    }
+
+    .ann-group-input {
+      width: 40px;
+      padding: 2px 3px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-align: center;
+      color: #334155;
+      background: #ffffff;
+      outline: none;
+      flex-shrink: 0;
+    }
+    .ann-group-input:focus {
+      border-color: var(--primary);
+    }
+    .ann-group-input::-webkit-inner-spin-button,
+    .ann-group-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .group-id-bar {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 6px 7px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      overflow: hidden;
+    }
+    .group-id-bar .pill-btn {
+      padding: 3px 6px;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+    .group-id-input {
+      width: 46px;
+      padding: 2px 4px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-align: center;
+      color: #1e293b;
+      background: #ffffff;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .group-id-input::-webkit-inner-spin-button,
+    .group-id-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .group-id-input:focus {
+      border-color: var(--primary);
+    }
+
+    .export-choice-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .export-choice-grid.cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .export-choice-card {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 9px;
+      padding: 9px 10px;
+      cursor: pointer;
+      background: #f8fafc;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .export-choice-card:hover {
+      border-color: #c4b5fd;
+      background: #faf5ff;
+    }
+    .export-choice-card.active {
+      border-color: var(--primary);
+      background: #f5f3ff;
+      box-shadow: 0 1px 6px rgba(124, 58, 237, 0.12);
+    }
+    .export-choice-card.disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+    .export-class-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 2px 7px;
+      font-size: 11px;
+      color: #1e293b;
+      font-weight: 600;
     }
 
     .selected-badge {
@@ -759,6 +866,7 @@
     }
     .modal-card.modal-wide .modal-body {
       overflow-y: auto;
+      overflow-x: hidden;
       max-height: calc(90vh - 115px);
     }
     .modal-tabs {
@@ -1346,8 +1454,8 @@
       <button type="button" class="btn-project-mgr" id="btnOpenProjectMgr" onclick="openProjectModal('list')" title="Tạo mới hoặc mở lại Dataset Project">
         <i class="fa-solid fa-folder-plus"></i> Quản lý Project
       </button>
-      <button class="btn-train" onclick="exportYOLO()">
-        <i class="fa-solid fa-download"></i> Export YOLO
+      <button class="btn-train" onclick="openExportModal()" title="Xuất nhãn .txt (YOLO) hoặc .json (Labelme + Group ID) theo tùy chọn">
+        <i class="fa-solid fa-download"></i> Xuất nhãn
       </button>
       <input type="file" id="uploadInput" accept="image/*" style="display:none;" onchange="handleUpload(event)">
       <button class="zoom-btn" onclick="document.getElementById('uploadInput').click()" title="Tải ảnh mới">
@@ -1374,7 +1482,7 @@
         </div>
 
         <!-- Auto-Classify Toggle Switch -->
-        <div style="background:#f5f3ff; border:1px solid #ddd6fe; padding:7px 10px; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="background:#f5f3ff; border:1px solid #ddd6fe; padding:7px 10px; border-radius:8px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
           <div style="font-size:11px; font-weight:600; color:#6d28d9; display:flex; align-items:center; gap:6px;">
             <i class="fa-solid fa-wand-magic-sparkles"></i>
             <span>Tự nhận diện Class</span>
@@ -1383,6 +1491,20 @@
             <input type="checkbox" id="autoClassifyToggle" checked onchange="toggleAutoClassify(this)">
             <span class="slider round"></span>
           </label>
+        </div>
+
+        <!-- Active Group ID Bar -->
+        <div class="group-id-bar" title="Tự động gán Group ID này cho các vùng mới vẽ (vd: cùng ID=1 cho quả, đài, cuống)">
+          <span style="font-size:11px; font-weight:600; color:#334155; display:flex; align-items:center; gap:4px; white-space:nowrap; min-width:0;">
+            <i class="fa-solid fa-link" style="color:var(--primary); flex-shrink:0;"></i>
+            <span>Group ID mới</span>
+          </span>
+          <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
+            <button type="button" class="pill-btn" onclick="stepActiveGroupId(-1)" title="Giảm Group ID">-</button>
+            <input type="number" id="activeGroupIdInput" class="group-id-input" min="0" step="1" placeholder="Trống" oninput="onActiveGroupIdInput(this.value)" onblur="setActiveGroupId(currentGroupId)" onkeydown="if(event.key==='Enter'){this.blur();}">
+            <button type="button" class="pill-btn" onclick="stepActiveGroupId(1)" title="Tăng / Sang cụm mới (+1)">+1</button>
+            <button type="button" class="pill-btn" onclick="clearActiveGroupId()" title="Bỏ Group ID mặc định">&times;</button>
+          </div>
         </div>
 
         <div id="classList">
@@ -1403,6 +1525,13 @@
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
             <span style="font-size:11px; font-weight:700; color:#6d28d9;" id="selectedObjTitle">Đang sửa Object #1</span>
             <span style="font-size:10px; color:#64748b;" id="selectedObjPoints">0 đỉnh</span>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px;">
+            <span style="font-size:11px; font-weight:600; color:#475569;">Group ID vùng chọn:</span>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" id="selectedObjGroupIdInput" class="group-id-input" min="0" step="1" placeholder="Trống" onchange="onSelectedGroupIdChange(this.value)" onkeydown="if(event.key==='Enter'){this.blur();}">
+              <button type="button" class="pill-btn" onclick="onSelectedGroupIdChange('')" title="Xóa Group ID">&times;</button>
+            </div>
           </div>
           <div style="display:flex; gap:6px;">
             <button type="button" class="pill-btn" onclick="setTool('eraser')" style="background:#fee2e2; border-color:#fca5a5; color:#b91c1c; font-weight:600; flex:1; display:flex; align-items:center; justify-content:center; gap:4px; padding:4px 6px;">
@@ -1783,6 +1912,106 @@
           <i class="fa-solid fa-rotate"></i> Làm mới thông số
         </button>
         <button type="button" class="btn-cancel" onclick="closeDeviceModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Custom Export (.txt / .json) -->
+  <div class="modal-overlay" id="exportModal" onclick="if (event.target === this) closeExportModal()">
+    <div class="modal-card modal-wide">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-file-export"></i>
+          <span>Xuất Nhãn Tùy Chọn (.txt / .json)</span>
+        </div>
+        <button class="modal-close" onclick="closeExportModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" style="gap:12px;">
+        <div class="form-group">
+          <label>1. Phạm vi xuất dữ liệu</label>
+          <div class="export-choice-grid cols-2">
+            <div class="export-choice-card active" id="expScopeProject" onclick="setExportScope('project')">
+              <div style="font-size:12px; font-weight:700; color:#1e293b;">
+                <i class="fa-solid fa-folder-open" style="color:var(--primary);"></i> Toàn bộ Project
+              </div>
+              <div style="font-size:11px; color:#64748b;">Xuất tất cả ảnh và nhãn vào thư mục trên máy</div>
+            </div>
+            <div class="export-choice-card" id="expScopeCurrent" onclick="setExportScope('current')">
+              <div style="font-size:12px; font-weight:700; color:#1e293b;">
+                <i class="fa-regular fa-image" style="color:var(--primary);"></i> Chỉ ảnh hiện tại
+              </div>
+              <div style="font-size:11px; color:#64748b;" id="expCurrentImgHint">Tải file nhãn của ảnh đang mở</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>2. Định dạng file nhãn</label>
+          <div class="export-choice-grid">
+            <div class="export-choice-card active" id="expFmtBoth" onclick="setExportFormat('both')">
+              <div style="font-size:12px; font-weight:700; color:#1e293b;">Cả hai (.txt + .json)</div>
+              <div style="font-size:11px; color:#64748b;">.txt để train YOLO &amp; .json giữ Group ID</div>
+            </div>
+            <div class="export-choice-card" id="expFmtTxt" onclick="setExportFormat('txt')">
+              <div style="font-size:12px; font-weight:700; color:#1e293b;">Chỉ YOLO (.txt)</div>
+              <div style="font-size:11px; color:#64748b;">Chuẩn Ultralytics [0..1], bỏ Group ID</div>
+            </div>
+            <div class="export-choice-card" id="expFmtJson" onclick="setExportFormat('json')">
+              <div style="font-size:12px; font-weight:700; color:#1e293b;">Chỉ JSON (.json)</div>
+              <div style="font-size:11px; color:#64748b;">Chuẩn Labelme / X-AnyLabeling giữ Group ID</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="exportProjectOptions" style="display:flex; flex-direction:column; gap:10px;">
+          <div class="form-group">
+            <label>3. Cấu trúc thư mục xuất</label>
+            <div class="export-choice-grid cols-2">
+              <div class="export-choice-card active" id="expLayoutSplit" onclick="setExportLayout('split')">
+                <div style="font-size:12px; font-weight:700; color:#1e293b;">Chia tập (train / val)</div>
+                <div style="font-size:11px; color:#64748b;">images/, labels/, annotations_json/ + data.yaml</div>
+              </div>
+              <div class="export-choice-card" id="expLayoutFlat" onclick="setExportLayout('flat')">
+                <div style="font-size:12px; font-weight:700; color:#1e293b;">Thư mục phẳng (chung với ảnh)</div>
+                <div style="font-size:11px; color:#64748b;">Ảnh + .json / .txt nằm chung (tiện mở Labelme)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>4. Thư mục lưu kết quả</label>
+            <div class="path-row">
+              <input type="text" id="exportOutputDirInput" placeholder="Thư mục lưu dataset xuất ra..." style="padding:7px 10px; border:1.5px solid var(--border-color); border-radius:8px; font-size:12px;">
+              <button type="button" class="btn-secondary" onclick="browseExportOutputDir()">
+                <i class="fa-solid fa-folder-open"></i> Chọn...
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="exportTxtOptions" class="form-group" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px; padding:10px 12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+            <label style="margin:0;">Thứ tự Class ID khi xuất .txt (0, 1, 2...)</label>
+            <button type="button" class="pill-btn" id="btnApplyStrawberryOrder" onclick="applyStrawberryPresetOrder()" style="font-size:10.5px; background:#ede9fe; color:#6d28d9; border-color:#c4b5fd; font-weight:600;">
+              Chuẩn 5 lớp (0:unripe → 4:calyx)
+            </button>
+          </div>
+          <input type="text" id="exportClassOrderInput" oninput="renderExportClassPreview()" placeholder="Ví dụ: unripe, almost_ripe, ripe, stem, calyx" style="padding:7px 10px; border:1.5px solid var(--border-color); border-radius:8px; font-size:12px;">
+          <div id="exportClassPreview" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:7px;"></div>
+          <div style="font-size:11px; color:#64748b; margin-top:6px;">
+            Lưu ý: File <code>.txt</code> chuẩn YOLO sẽ chuẩn hóa tọa độ về <code>[0, 1]</code> và tự động lược bỏ <code>group_id</code> (vẫn giữ nguyên trong file <code>.json</code>).
+          </div>
+        </div>
+
+        <div id="exportResultBox" style="display:none; border-radius:8px; padding:10px 12px; font-size:12px; line-height:1.5; word-break:break-word; overflow-wrap:anywhere;"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeExportModal()">Đóng</button>
+        <button type="button" class="btn-find-submit" id="btnSubmitExport" onclick="submitExport()">
+          <i class="fa-solid fa-download"></i> Xuất dữ liệu
+        </button>
       </div>
     </div>
   </div>
@@ -2377,9 +2606,10 @@
     ];
 
     let currentClass = CLASSES[1].name; // Default: calyx
+    let currentGroupId = null; // Group ID mặc định gán cho vùng mới vẽ
     let currentImageName = "";
     let images = [];
-    let annotations = []; // [{ id, class_name, polygon: [[x, y], ...], bbox }]
+    let annotations = []; // [{ id, class_name, group_id, polygon: [[x, y], ...], bbox }]
     let selectedAnnotationIndex = null; // Index của object đang chọn để sửa / tẩy / đắp
     let selectedModel = "sam2_tiny";
     let activeTool = "smart_poly"; // 'smart_poly', 'lasso', 'poly_manual', 'eraser', 'select', 'point_ai', 'bbox', 'pan'
@@ -2442,6 +2672,128 @@
       selectedAnnotationIndex = null;
       updateAnnotationUI();
       redraw();
+    }
+
+    const GROUP_COLORS = ["#2563eb", "#16a34a", "#d97706", "#db2777", "#0891b2", "#7c3aed", "#dc2626", "#65a30d"];
+
+    function normalizeGroupIdClient(val) {
+      if (val === null || val === undefined || val === false) return null;
+      const s = String(val).trim();
+      if (!s) return null;
+      if (/^\d+$/.test(s)) return parseInt(s, 10);
+      return null;
+    }
+
+    function hasGroupId(ann) {
+      return ann && ann.group_id !== undefined && ann.group_id !== null && ann.group_id !== "";
+    }
+
+    function getGroupColor(gid) {
+      const n = parseInt(gid, 10);
+      if (!Number.isNaN(n)) return GROUP_COLORS[Math.abs(n) % GROUP_COLORS.length];
+      let sum = 0;
+      for (const ch of String(gid)) sum += ch.charCodeAt(0);
+      return GROUP_COLORS[sum % GROUP_COLORS.length];
+    }
+
+    function withActiveGroupId(obj) {
+      if (currentGroupId !== null) obj.group_id = currentGroupId;
+      return obj;
+    }
+
+    function getMaxGroupIdInImage() {
+      let maxId = 0;
+      annotations.forEach(ann => {
+        const n = Number(ann.group_id);
+        if (Number.isInteger(n) && n > maxId) maxId = n;
+      });
+      return maxId;
+    }
+
+    function setActiveGroupId(val) {
+      currentGroupId = normalizeGroupIdClient(val);
+      const inp = document.getElementById("activeGroupIdInput");
+      if (inp) inp.value = (currentGroupId !== null) ? String(currentGroupId) : "";
+    }
+
+    function onActiveGroupIdInput(val) {
+      currentGroupId = normalizeGroupIdClient(val);
+    }
+
+    function stepActiveGroupId(delta) {
+      if (delta > 0) {
+        const next = (currentGroupId === null) ? (getMaxGroupIdInImage() + 1) : (currentGroupId + 1);
+        setActiveGroupId(next);
+        showToast(`Group ID vẽ mới: ${next}`);
+      } else {
+        if (currentGroupId === null) return;
+        if (currentGroupId <= 1) {
+          clearActiveGroupId();
+        } else {
+          setActiveGroupId(currentGroupId - 1);
+          showToast(`Group ID vẽ mới: ${currentGroupId}`);
+        }
+      }
+    }
+
+    function clearActiveGroupId() {
+      setActiveGroupId(null);
+      showToast("Đã bỏ Group ID mặc định khi vẽ");
+    }
+
+    function applyGroupInputStyle(inp, gid) {
+      if (!inp) return;
+      if (gid !== null && gid !== undefined && gid !== "") {
+        const gColor = getGroupColor(gid);
+        inp.style.borderColor = gColor;
+        inp.style.color = gColor;
+        inp.style.background = `${gColor}12`;
+      } else {
+        inp.style.borderColor = "";
+        inp.style.color = "";
+        inp.style.background = "";
+      }
+    }
+
+    function syncGroupIdInputsUi(idx, gid) {
+      const displayVal = (gid === null || gid === undefined) ? "" : String(gid);
+      const rowInp = document.querySelector(`#annotationList input.ann-group-input[data-ann-idx="${idx}"]`);
+      if (rowInp) {
+        rowInp.value = displayVal;
+        applyGroupInputStyle(rowInp, gid);
+      }
+      if (selectedAnnotationIndex === idx) {
+        const selGidInp = document.getElementById("selectedObjGroupIdInput");
+        if (selGidInp) selGidInp.value = displayVal;
+      }
+    }
+
+    function changeAnnotationGroupId(idx, rawVal) {
+      const ann = annotations[idx];
+      if (!ann) return;
+      const newGid = normalizeGroupIdClient(rawVal);
+      const prevGid = hasGroupId(ann) ? ann.group_id : null;
+      if (prevGid === newGid) {
+        syncGroupIdInputsUi(idx, prevGid);
+        return;
+      }
+      pushHistory();
+      if (newGid === null) {
+        delete ann.group_id;
+      } else {
+        ann.group_id = newGid;
+      }
+      // Update inputs in place instead of rebuilding #annotationList DOM on blur
+      syncGroupIdInputsUi(idx, newGid);
+      saveAnnotations();
+      redraw();
+      showToast(newGid === null ? `Đã bỏ Group ID của #${idx + 1}` : `Đã gán Group ID = ${newGid} cho #${idx + 1}`);
+    }
+
+    function onSelectedGroupIdChange(rawVal) {
+      if (selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex]) {
+        changeAnnotationGroupId(selectedAnnotationIndex, rawVal);
+      }
     }
 
     function changeAnnotationClass(idx, newClassName) {
@@ -2544,13 +2896,15 @@
           target.polygon = data.polygons[0];
           target.type = "polygon";
           delete target.bbox;
-          // Nếu polygon bị đứt thành nhiều mảnh con, thêm vào danh sách
+          // Nếu polygon bị đứt thành nhiều mảnh con, thêm vào danh sách và giữ nguyên group_id
           for (let i = 1; i < data.polygons.length; i++) {
-            annotations.push({
+            const piece = {
               class_name: target.class_name,
               type: "polygon",
               polygon: data.polygons[i]
-            });
+            };
+            if (hasGroupId(target)) piece.group_id = target.group_id;
+            annotations.push(piece);
           }
           showToast("✂️ Đã tẩy bớt phần thừa thành công!");
         }
@@ -2602,12 +2956,13 @@
       } else {
         // Tạo annotation mới
         pushHistory();
-        annotations.push({
+        annotations.push(withActiveGroupId({
           class_name: currentClass,
           type: "polygon",
           polygon: poly
-        });
-        showToast(`✅ Đã tạo Polygon thủ công '${currentClass}' (${count} đỉnh)!`);
+        }));
+        const gidNote = (currentGroupId !== null) ? ` [ID:${currentGroupId}]` : "";
+        showToast(`✅ Đã tạo Polygon thủ công '${currentClass}'${gidNote} (${count} đỉnh)!`);
       }
 
       updateAnnotationUI();
@@ -2638,6 +2993,7 @@
     let activeProjectId = "__default__";
     let activeProjectName = "Workspace Mặc định";
     let activeProjectLastImage = "";
+    let activeProjectDatasetDir = "";
     let defaultProjectsDir = "";
     let projectsRegistryState = null;
 
@@ -2868,6 +3224,7 @@
 
     function resetInteractionState() {
       selectedAnnotationIndex = null;
+      setActiveGroupId(null);
       historyStack = [];
       manualPolyPoints = [];
       lassoPoints = [];
@@ -3016,6 +3373,7 @@
       // Quick action panel cho object đang chọn
       const panel = document.getElementById("selectedObjActionPanel");
       const deselectBtn = document.getElementById("btnDeselectObj");
+      const selGidInp = document.getElementById("selectedObjGroupIdInput");
       if (selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex]) {
         const ann = annotations[selectedAnnotationIndex];
         if (panel) panel.style.display = "block";
@@ -3025,9 +3383,11 @@
         const ptsEl = document.getElementById("selectedObjPoints");
         const isBbox = (ann.type === "bbox");
         if (ptsEl) ptsEl.innerText = isBbox ? "Bounding Box" : `${ann.polygon ? ann.polygon.length : 0} đỉnh`;
+        if (selGidInp) selGidInp.value = hasGroupId(ann) ? String(ann.group_id) : "";
       } else {
         if (panel) panel.style.display = "none";
         if (deselectBtn) deselectBtn.style.display = "none";
+        if (selGidInp) selGidInp.value = "";
       }
 
       updateEraserTargetDisplay();
@@ -3042,6 +3402,10 @@
         const color = classObj.color;
         const isSelected = (idx === selectedAnnotationIndex);
         const isBbox = (ann.type === "bbox");
+        const gidVal = hasGroupId(ann) ? String(ann.group_id) : "";
+        const gidStyle = hasGroupId(ann)
+          ? `border-color:${getGroupColor(ann.group_id)}; color:${getGroupColor(ann.group_id)}; background:${getGroupColor(ann.group_id)}12;`
+          : "";
 
         const item = document.createElement("div");
         item.className = `ann-item ${isSelected ? 'selected' : ''}`;
@@ -3055,16 +3419,16 @@
           : "";
 
         item.innerHTML = `
-          <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0;">
-            <span style="width:10px; height:10px; border-radius:50%; background:${color}; flex-shrink:0;"></span>
+          <div style="display:flex; align-items:center; gap:4px; flex:1; min-width:0;">
+            <span style="width:9px; height:9px; border-radius:50%; background:${color}; flex-shrink:0;"></span>
             <select class="ann-class-select" onclick="event.stopPropagation()" onchange="changeAnnotationClass(${idx}, this.value)" title="Đổi nhãn class">
               ${optionsHtml}${extraOpt}
             </select>
+            <input type="number" min="0" step="1" data-ann-idx="${idx}" class="ann-group-input" style="${gidStyle}" value="${escapeHtml(gidVal)}" placeholder="ID" onclick="event.stopPropagation()" onchange="changeAnnotationGroupId(${idx}, this.value)" onkeydown="if(event.key==='Enter'){this.blur();}" title="Group ID vùng #${idx+1} (nhập số, vd: 1, 2)">
             <span class="type-pill-badge ${isBbox ? 'bbox' : ''}">${isBbox ? 'BOX' : 'POLY'}</span>
             <span style="color:#94a3b8; font-size:10px; font-weight:600;">#${idx+1}</span>
           </div>
-          <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
-            ${isSelected ? '<span class="selected-badge">Đang sửa</span>' : ''}
+          <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
             <button onclick="event.stopPropagation(); removeAnnotation(${idx})" class="btn-del-ann" title="Xóa nhãn này">&times;</button>
           </div>
         `;
@@ -3451,12 +3815,12 @@
           const y2 = Math.max(dragStart.y, dragCurrent.y);
           if (Math.abs(x2 - x1) > 8 && Math.abs(y2 - y1) > 8) {
             pushHistory();
-            annotations.push({
+            annotations.push(withActiveGroupId({
               class_name: currentClass,
               type: "bbox",
               polygon: [[x1, y1], [x2, y1], [x2, y2], [x1, y2]],
               bbox: [x1, y1, x2, y2]
-            });
+            }));
             updateAnnotationUI();
             saveAnnotations();
           }
@@ -3479,6 +3843,7 @@
           if (e.key === "Escape") {
             closeProjectModal();
             closeDeviceModal();
+            closeExportModal();
             closeGuideModal();
             document.activeElement.blur();
           }
@@ -3492,6 +3857,11 @@
         }
 
         if (e.key === "Escape") {
+          const em = document.getElementById("exportModal");
+          if (em && (em.style.display === "flex" || em.classList.contains("show"))) {
+            closeExportModal();
+            return;
+          }
           const gm = document.getElementById("guideModal");
           if (gm && (gm.style.display === "flex" || gm.classList.contains("show"))) {
             closeGuideModal();
@@ -3567,11 +3937,11 @@
           pushHistory();
           const assignedClass = data.class_name || currentClass;
           data.polygons.forEach(p => {
-            annotations.push({
+            annotations.push(withActiveGroupId({
               class_name: assignedClass,
               type: "polygon",
               polygon: p
-            });
+            }));
           });
 
           // Tự động đồng bộ và kích hoạt class vừa nhận diện trên UI
@@ -3601,10 +3971,15 @@
       }
 
       // Draw all saved annotations
+      const selectedAnn = (selectedAnnotationIndex !== null) ? annotations[selectedAnnotationIndex] : null;
+      const selectedGroupId = hasGroupId(selectedAnn) ? selectedAnn.group_id : null;
+
       annotations.forEach((ann, idx) => {
         const classObj = CLASSES.find(c => c.name === ann.class_name) || { color: "#a855f7" };
         const color = classObj.color;
         const isSelected = (idx === selectedAnnotationIndex);
+        const annHasGid = hasGroupId(ann);
+        const isSameGroup = (!isSelected && selectedGroupId !== null && annHasGid && ann.group_id === selectedGroupId);
 
         if (ann.polygon && ann.polygon.length > 0) {
           ctx.beginPath();
@@ -3624,6 +3999,18 @@
             ctx.strokeStyle = "#7c3aed";
             ctx.lineWidth = 2.5;
             ctx.stroke();
+          } else if (isSameGroup) {
+            const gColor = getGroupColor(ann.group_id);
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3.5;
+            ctx.stroke();
+
+            ctx.save();
+            ctx.setLineDash([6, 4]);
+            ctx.strokeStyle = gColor;
+            ctx.lineWidth = 2.4;
+            ctx.stroke();
+            ctx.restore();
           } else {
             ctx.strokeStyle = color;
             ctx.lineWidth = 2.2;
@@ -3638,10 +4025,18 @@
 
           // Label badge
           ctx.font = isSelected ? "bold 13px sans-serif" : "bold 12px sans-serif";
-          ctx.fillStyle = isSelected ? "#7c3aed" : color;
           const kindTag = (ann.type === "bbox") ? "[BOX] " : "";
-          const labelText = isSelected ? `★ ${kindTag}${ann.class_name} #${idx + 1}` : `${kindTag}${ann.class_name} #${idx + 1}`;
-          ctx.fillText(labelText, ann.polygon[0][0], Math.max(16, ann.polygon[0][1] - 6));
+          const groupTag = annHasGid ? `[ID:${ann.group_id}] ` : "";
+          const labelText = isSelected
+            ? `★ ${groupTag}${kindTag}${ann.class_name} #${idx + 1}`
+            : `${groupTag}${kindTag}${ann.class_name} #${idx + 1}`;
+          const tx = ann.polygon[0][0];
+          const ty = Math.max(16, ann.polygon[0][1] - 6);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "rgba(255,255,255,0.9)";
+          ctx.strokeText(labelText, tx, ty);
+          ctx.fillStyle = isSelected ? "#7c3aed" : color;
+          ctx.fillText(labelText, tx, ty);
 
           // Draw vertex handles for selected object
           if (isSelected) {
@@ -3798,27 +4193,225 @@
       }
     }
 
-    async function exportYOLO() {
+    const STRAWBERRY_STANDARD_ORDER = ["unripe", "almost_ripe", "ripe", "stem", "calyx"];
+    let exportState = { scope: "project", format: "both", layout: "split", lastProjectId: null };
+
+    function openExportModal() {
+      const modal = document.getElementById("exportModal");
+      if (!modal) return;
+      if (exportState.lastProjectId !== activeProjectId) {
+        const dirInp = document.getElementById("exportOutputDirInput");
+        if (dirInp) dirInp.value = activeProjectDatasetDir || "";
+        const clsInp = document.getElementById("exportClassOrderInput");
+        if (clsInp) clsInp.value = CLASSES.map(c => c.name).join(", ");
+        exportState.lastProjectId = activeProjectId;
+      }
+      if (!currentImageName && exportState.scope === "current") {
+        exportState.scope = "project";
+      }
+      const resBox = document.getElementById("exportResultBox");
+      if (resBox) resBox.style.display = "none";
+
+      const presetBtn = document.getElementById("btnApplyStrawberryOrder");
+      if (presetBtn) {
+        const hasAll5 = STRAWBERRY_STANDARD_ORDER.every(n => CLASSES.some(c => c.name === n));
+        presetBtn.style.display = hasAll5 ? "inline-flex" : "none";
+      }
+      updateExportModalUI();
+      renderExportClassPreview();
+      modal.style.display = "flex";
+    }
+
+    function closeExportModal() {
+      const modal = document.getElementById("exportModal");
+      if (modal) modal.style.display = "none";
+    }
+
+    function setExportScope(scope) {
+      if (scope === "current" && !currentImageName) {
+        showToast("Chưa mở ảnh nào để xuất riêng");
+        return;
+      }
+      exportState.scope = scope;
+      updateExportModalUI();
+    }
+
+    function setExportFormat(fmt) {
+      exportState.format = fmt;
+      updateExportModalUI();
+    }
+
+    function setExportLayout(layout) {
+      exportState.layout = layout;
+      updateExportModalUI();
+    }
+
+    function updateExportModalUI() {
+      const hasImg = Boolean(currentImageName);
+      document.getElementById("expScopeProject")?.classList.toggle("active", exportState.scope === "project");
+      const curCard = document.getElementById("expScopeCurrent");
+      if (curCard) {
+        curCard.classList.toggle("active", exportState.scope === "current");
+        curCard.classList.toggle("disabled", !hasImg);
+      }
+      const curHint = document.getElementById("expCurrentImgHint");
+      if (curHint) {
+        curHint.innerText = hasImg ? `Tải file nhãn của '${currentImageName}'` : "Chưa có ảnh đang mở";
+      }
+
+      document.getElementById("expFmtBoth")?.classList.toggle("active", exportState.format === "both");
+      document.getElementById("expFmtTxt")?.classList.toggle("active", exportState.format === "txt");
+      document.getElementById("expFmtJson")?.classList.toggle("active", exportState.format === "json");
+
+      document.getElementById("expLayoutSplit")?.classList.toggle("active", exportState.layout === "split");
+      document.getElementById("expLayoutFlat")?.classList.toggle("active", exportState.layout === "flat");
+
+      const projOpts = document.getElementById("exportProjectOptions");
+      if (projOpts) projOpts.style.display = (exportState.scope === "project") ? "flex" : "none";
+
+      const txtOpts = document.getElementById("exportTxtOptions");
+      if (txtOpts) txtOpts.style.display = (exportState.format === "json") ? "none" : "block";
+
+      const submitBtn = document.getElementById("btnSubmitExport");
+      if (submitBtn) {
+        submitBtn.innerHTML = exportState.scope === "current"
+          ? `<i class="fa-solid fa-download"></i> Tải file nhãn`
+          : `<i class="fa-solid fa-download"></i> Xuất dữ liệu`;
+      }
+    }
+
+    function parseExportClassList() {
+      const raw = (document.getElementById("exportClassOrderInput")?.value || "").trim();
+      if (!raw) return [];
+      const out = [];
+      const seen = new Set();
+      raw.split(",").forEach(part => {
+        const name = part.trim();
+        if (name && !seen.has(name)) {
+          out.push(name);
+          seen.add(name);
+        }
+      });
+      return out;
+    }
+
+    function renderExportClassPreview() {
+      const el = document.getElementById("exportClassPreview");
+      if (!el) return;
+      const list = parseExportClassList();
+      if (!list.length) {
+        el.innerHTML = `<span style="font-size:11px; color:#b91c1c;">Vui lòng nhập ít nhất 1 tên lớp.</span>`;
+        return;
+      }
+      el.innerHTML = list.map((name, idx) => `<span class="export-class-chip"><b>${idx}:</b> ${escapeHtml(name)}</span>`).join("");
+    }
+
+    function applyStrawberryPresetOrder() {
+      const extras = CLASSES.map(c => c.name).filter(n => !STRAWBERRY_STANDARD_ORDER.includes(n));
+      const ordered = [...STRAWBERRY_STANDARD_ORDER, ...extras];
+      const inp = document.getElementById("exportClassOrderInput");
+      if (inp) inp.value = ordered.join(", ");
+      renderExportClassPreview();
+      showToast("Đã đặt thứ tự 5 lớp chuẩn (0:unripe → 4:calyx)");
+    }
+
+    const browseExportOutputDir = () => browseFolderInto(
+      "exportOutputDirInput",
+      "Chọn thư mục lưu dữ liệu xuất",
+      document.getElementById("exportOutputDirInput")?.value || activeProjectDatasetDir || defaultProjectsDir,
+      "Không mở được hộp thoại chọn thư mục"
+    );
+
+    function showExportResult(html, isError) {
+      const box = document.getElementById("exportResultBox");
+      if (!box) return;
+      box.style.display = "block";
+      box.style.background = isError ? "#fef2f2" : "#f0fdf4";
+      box.style.border = isError ? "1px solid #fecaca" : "1px solid #bbf7d0";
+      box.style.color = isError ? "#991b1b" : "#166534";
+      box.innerHTML = html;
+    }
+
+    async function submitExport() {
+      const wantTxt = (exportState.format === "txt" || exportState.format === "both");
+      const exportClasses = parseExportClassList();
+      if (wantTxt && exportClasses.length === 0) {
+        showExportResult("Danh sách Class ID khi xuất .txt không được để trống.", true);
+        return;
+      }
+
+      const btn = document.getElementById("btnSubmitExport");
+      if (btn) btn.disabled = true;
       try {
         await flushPendingSave();
-        showToast("Đang xuất nhãn & phân chia Dataset YOLO...");
-        const res = await fetch("/api/export");
-        const data = await res.json();
-        if (data.success) {
-          alert(`Xuất nhãn YOLO Dataset thành công!\n\n` +
-                `• Project: ${data.project_name || activeProjectName}\n` +
-                `• Đường dẫn Dataset: ${data.dataset_dir}\n` +
-                `• File cấu hình: ${data.data_yaml}\n` +
-                `• Tập huấn luyện (train): ${data.stats.train_images} ảnh\n` +
-                `• Tập kiểm thử (val): ${data.stats.val_images} ảnh\n` +
-                `• Tổng số nhãn: ${data.stats.total_annotations} đối tượng\n\n` +
-                `Dữ liệu đã sẵn sàng để huấn luyện YOLO!`);
-        } else {
-          alert(`Lỗi xuất dataset: ${data.error || "Không thể xuất"}`);
+
+        if (exportState.scope === "current") {
+          const res = await fetch("/api/export_image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              image_name: currentImageName,
+              format: exportState.format,
+              classes: wantTxt ? exportClasses : null
+            })
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            showExportResult(escapeHtml(errData.error || "Không thể xuất file ảnh hiện tại"), true);
+            return;
+          }
+          const blob = await res.blob();
+          const cd = res.headers.get("Content-Disposition") || "";
+          const match = cd.match(/filename="([^"]+)"/i) || cd.match(/filename=([^;\s]+)/i);
+          const stem = currentImageName.replace(/\.[^.]+$/, "");
+          const extFallback = exportState.format === "both" ? "_labels.zip" : `.${exportState.format}`;
+          const downloadName = match ? match[1] : `${stem}${extFallback}`;
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = downloadName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          showExportResult(`✅ Đã tải xuống <b>${escapeHtml(downloadName)}</b> (${annotations.length} vùng nhãn).`, false);
+          return;
         }
+
+        showToast("Đang xuất dữ liệu nhãn...");
+        const outputDir = (document.getElementById("exportOutputDirInput")?.value || "").trim();
+        const { res, data } = await postJson("/api/export", {
+          format: exportState.format,
+          layout: exportState.layout,
+          output_dir: outputDir || null,
+          classes: wantTxt ? exportClasses : null
+        });
+        if (!res.ok || !data.success) {
+          showExportResult(escapeHtml(data.error || "Không thể xuất dataset"), true);
+          return;
+        }
+        const st = data.stats || {};
+        const splitLine = data.layout === "split"
+          ? `• Tập train / val: <b>${st.train_images || 0}</b> / <b>${st.val_images || 0}</b> ảnh<br>`
+          : `• Số ảnh xuất (thư mục phẳng): <b>${st.total_images || 0}</b> ảnh<br>`;
+        const yamlLine = data.data_yaml ? `• File YOLO YAML: <code>${escapeHtml(data.data_yaml)}</code><br>` : "";
+        const jsonLine = data.json_dir ? `• Thư mục JSON: <code>${escapeHtml(data.json_dir)}</code><br>` : "";
+        showExportResult(
+          `✅ <b>Xuất dữ liệu thành công!</b><br>` +
+          `• Thư mục đích: <code>${escapeHtml(data.dataset_dir)}</code><br>` +
+          yamlLine + jsonLine + splitLine +
+          `• Tổng đối tượng: <b>${st.total_annotations || 0}</b> (đã gắn Group ID: <b>${st.grouped_annotations || 0}</b>)`,
+          false
+        );
       } catch (e) {
-        alert("Lỗi kết nối tới máy chủ khi xuất dataset");
+        showExportResult("Lỗi kết nối tới máy chủ khi xuất dữ liệu.", true);
+      } finally {
+        if (btn) btn.disabled = false;
       }
+    }
+
+    function exportYOLO() {
+      openExportModal();
     }
 
     // =========================================================================
@@ -3847,6 +4440,7 @@
       activeProjectId = activeProj.id || "__default__";
       activeProjectName = activeProj.name || "Workspace Mặc định";
       activeProjectLastImage = activeProj.last_image || "";
+      activeProjectDatasetDir = activeProj.dataset_dir || "";
 
       const headerNameEl = document.getElementById("headerProjectName");
       if (headerNameEl) headerNameEl.innerText = activeProjectName;

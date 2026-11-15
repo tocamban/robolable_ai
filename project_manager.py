@@ -564,12 +564,75 @@ def parse_yolo_label_file_to_annotations(label_path, img_w, img_h, class_names):
     return annotations
 
 
+def normalize_group_id(val):
+    """Normalize an annotation group_id to a non-negative int, non-empty str, or None."""
+    if val is None or isinstance(val, bool):
+        return None
+    if isinstance(val, int):
+        return val if val >= 0 else None
+    if isinstance(val, float):
+        return int(val) if val.is_integer() and val >= 0 else None
+    s = str(val).strip()
+    if not s:
+        return None
+    try:
+        n = int(s)
+        return n if n >= 0 else None
+    except ValueError:
+        return s
+
+
+def sanitize_annotations_list(annotations_list):
+    """Return a clean copy of annotation dicts with normalized optional group_id."""
+    cleaned = []
+    for item in (annotations_list or []):
+        if not isinstance(item, dict):
+            continue
+        entry = dict(item)
+        gid = normalize_group_id(entry.get("group_id"))
+        if gid is None:
+            entry.pop("group_id", None)
+        else:
+            entry["group_id"] = gid
+        cleaned.append(entry)
+    return cleaned
+
+
 def _is_axis_aligned_rect(poly):
     if not poly or len(poly) != 4:
         return False
     xs = sorted(set(round(float(p[0]), 2) for p in poly))
     ys = sorted(set(round(float(p[1]), 2) for p in poly))
     return len(xs) == 2 and len(ys) == 2
+
+
+def _extract_clamped_bbox(item, img_w, img_h):
+    """Return clamped (x1, y1, x2, y2) for bbox annotations, or None if not a valid box."""
+    ann_type = item.get("type")
+    bbox = item.get("bbox")
+    poly = item.get("polygon", [])
+    is_box = (ann_type == "bbox") or (bbox is not None and _is_axis_aligned_rect(poly))
+    if not is_box:
+        return None
+    if bbox and len(bbox) == 4:
+        x1, y1, x2, y2 = [float(v) for v in bbox]
+    elif poly and len(poly) >= 4:
+        xs = [float(p[0]) for p in poly]
+        ys = [float(p[1]) for p in poly]
+        x1, x2 = min(xs), max(xs)
+        y1, y2 = min(ys), max(ys)
+    else:
+        return None
+    x1, x2 = max(0.0, min(float(img_w), min(x1, x2))), max(0.0, min(float(img_w), max(x1, x2)))
+    y1, y2 = max(0.0, min(float(img_h), min(y1, y2))), max(0.0, min(float(img_h), max(y1, y2)))
+    if x2 <= x1 or y2 <= y1:
+        return None
+    return x1, y1, x2, y2
+
+
+def _fmt_coord(val):
+    v = round(float(val), 1)
+    return int(v) if v.is_integer() else v
 
 
 def annotations_to_yolo_lines(annotations, img_w, img_h, class_names):
@@ -583,39 +646,70 @@ def annotations_to_yolo_lines(annotations, img_w, img_h, class_names):
         if cname not in class_names:
             continue
         c_idx = class_names.index(cname)
-        ann_type = item.get("type")
-        bbox = item.get("bbox")
-        poly = item.get("polygon", [])
-
-        is_box = (ann_type == "bbox") or (bbox is not None and _is_axis_aligned_rect(poly))
-        if is_box:
-            if bbox and len(bbox) == 4:
-                x1, y1, x2, y2 = [float(v) for v in bbox]
-            elif poly and len(poly) >= 4:
-                xs = [float(p[0]) for p in poly]
-                ys = [float(p[1]) for p in poly]
-                x1, x2 = min(xs), max(xs)
-                y1, y2 = min(ys), max(ys)
-            else:
-                continue
-
-            x1, x2 = max(0.0, min(float(img_w), min(x1, x2))), max(0.0, min(float(img_w), max(x1, x2)))
-            y1, y2 = max(0.0, min(float(img_h), min(y1, y2))), max(0.0, min(float(img_h), max(y1, y2)))
+        box = _extract_clamped_bbox(item, img_w, img_h)
+        if box is not None:
+            x1, y1, x2, y2 = box
             bw = (x2 - x1) / img_w
             bh = (y2 - y1) / img_h
-            if bw <= 0 or bh <= 0:
-                continue
             xc = ((x1 + x2) / 2.0) / img_w
             yc = ((y1 + y2) / 2.0) / img_h
             lines.append(f"{c_idx} {xc:.6f} {yc:.6f} {bw:.6f} {bh:.6f}")
-        elif poly and len(poly) >= 3:
-            coords = " ".join([
-                f"{max(0.0, min(1.0, float(pt[0]) / img_w)):.6f} {max(0.0, min(1.0, float(pt[1]) / img_h)):.6f}"
-                for pt in poly
-            ])
-            lines.append(f"{c_idx} {coords}")
+        else:
+            poly = item.get("polygon", [])
+            if poly and len(poly) >= 3:
+                coords = " ".join([
+                    f"{max(0.0, min(1.0, float(pt[0]) / img_w)):.6f} {max(0.0, min(1.0, float(pt[1]) / img_h)):.6f}"
+                    for pt in poly
+                ])
+                lines.append(f"{c_idx} {coords}")
 
     return lines
+
+
+def annotations_to_labelme_json(annotations, img_name, img_w, img_h):
+    """Serialize RoboLabel annotations to Labelme / X-AnyLabeling JSON preserving group_id."""
+    shapes = []
+    if img_w > 0 and img_h > 0:
+        for item in (annotations or []):
+            cname = str(item.get("class_name") or "").strip()
+            if not cname:
+                continue
+            group_id = normalize_group_id(item.get("group_id"))
+            box = _extract_clamped_bbox(item, img_w, img_h)
+            if box is not None:
+                x1, y1, x2, y2 = box
+                shape_type = "rectangle"
+                points = [[_fmt_coord(x1), _fmt_coord(y1)], [_fmt_coord(x2), _fmt_coord(y2)]]
+            else:
+                poly = item.get("polygon", [])
+                if not poly or len(poly) < 3:
+                    continue
+                shape_type = "polygon"
+                points = [
+                    [
+                        _fmt_coord(max(0.0, min(float(img_w), float(pt[0])))),
+                        _fmt_coord(max(0.0, min(float(img_h), float(pt[1])))),
+                    ]
+                    for pt in poly
+                ]
+            shapes.append({
+                "label": cname,
+                "points": points,
+                "group_id": group_id,
+                "description": "",
+                "shape_type": shape_type,
+                "flags": {},
+            })
+
+    return {
+        "version": "5.0.1",
+        "flags": {},
+        "shapes": shapes,
+        "imagePath": os.path.basename(img_name),
+        "imageData": None,
+        "imageHeight": int(img_h),
+        "imageWidth": int(img_w),
+    }
 
 
 def _build_yolo_yaml(root_dir, class_names, train_rel="images", val_rel="images", test_rel=""):
@@ -813,6 +907,7 @@ class ProjectManager:
             "id": self.DEFAULT_ID,
             "name": "Workspace Mặc định",
             "project_dir": self.base_dir,
+            "dataset_dir": self.default_dataset,
             "dataset_format": "default",
             "format_label": "Workspace Mặc định (uploads/ & annotations/)",
             "classes": list(DEFAULT_CLASS_NAMES),
@@ -828,6 +923,7 @@ class ProjectManager:
             pdir = entry.get("project_dir", "")
             exists = os.path.isdir(pdir) and os.path.exists(os.path.join(pdir, self.MANIFEST_FILENAME))
             item = dict(entry)
+            item["dataset_dir"] = os.path.join(pdir, "dataset") if pdir else ""
             item["exists"] = exists
             item["is_default"] = False
             if exists:
@@ -855,6 +951,7 @@ class ProjectManager:
                 "id": ctx["id"],
                 "name": ctx["name"],
                 "project_dir": ctx["project_dir"],
+                "dataset_dir": ctx["dataset_dir"],
                 "dataset_format": ctx["dataset_format"],
                 "format_label": ctx["format_label"],
                 "classes": ctx["classes"],
@@ -1194,6 +1291,7 @@ class ProjectManager:
         ann_path = os.path.join(ctx["annotations_dir"], f"{safe_name}.json")
         if not isinstance(annotations_list, list):
             annotations_list = []
+        annotations_list = sanitize_annotations_list(annotations_list)
 
         # Atomic JSON write (canonical source of truth)
         atomic_write_json(ann_path, {"annotations": annotations_list})
@@ -1240,104 +1338,230 @@ class ProjectManager:
                 manifest["last_image"] = safe_name
                 self._write_manifest(ctx["project_dir"], manifest)
 
-    def export_active_yolo(self):
+    def _resolve_export_dir(self, ctx, output_dir):
+        target = os.path.abspath((output_dir or "").strip() or ctx["dataset_dir"])
+        protected = (
+            ctx["images_dir"],
+            ctx["annotations_dir"],
+            self.default_uploads,
+            self.default_annotations,
+            os.path.join(self.base_dir, "static"),
+            os.path.join(self.base_dir, "weights"),
+            os.path.join(self.base_dir, "venv"),
+            os.path.join(self.base_dir, ".git"),
+        )
+        if os.path.normcase(target) == os.path.normcase(self.base_dir):
+            raise ValueError("Không thể xuất đè trực tiếp vào thư mục gốc ứng dụng.")
+        if not ctx["is_default"] and os.path.normcase(target) == os.path.normcase(ctx["project_dir"]):
+            raise ValueError("Không thể xuất đè trực tiếp lên thư mục gốc của Project.")
+        for p in protected:
+            if _path_is_same_or_inside(target, p):
+                raise ValueError("Thư mục xuất không được trùng hoặc nằm bên trong thư mục ảnh gốc / hệ thống.")
+        os.makedirs(target, exist_ok=True)
+        return target
+
+    def _resolve_export_classes(self, ctx, class_names):
+        if class_names is None:
+            return list(ctx["classes"])
+        if isinstance(class_names, str):
+            raw = [part.strip() for part in class_names.split(",")]
+        elif isinstance(class_names, list):
+            raw = [str(part).strip() for part in class_names]
+        else:
+            raise ValueError("Danh sách class xuất không hợp lệ.")
+        clean = []
+        seen = set()
+        for name in raw:
+            if name and name not in seen:
+                clean.append(name)
+                seen.add(name)
+        if not clean:
+            raise ValueError("Danh sách class xuất không được rỗng.")
+        return clean
+
+    def _read_image_annotations(self, ann_dir, img_name):
+        ann_path = os.path.join(ann_dir, f"{img_name}.json")
+        if not os.path.exists(ann_path):
+            return []
+        try:
+            with open(ann_path, "r", encoding="utf-8") as f:
+                return json.load(f).get("annotations", [])
+        except Exception as e:
+            print(f"[!] Error reading {ann_path}: {e}")
+            return []
+
+    def export_single_image(self, image_name, export_format="both", class_names=None):
         ctx = self.get_active_context()
+        fmt = (export_format or "both").strip().lower()
+        if fmt not in ("txt", "json", "both"):
+            raise ValueError("Định dạng xuất không hợp lệ (chỉ chấp nhận 'txt', 'json', 'both').")
+        safe_name = os.path.basename((image_name or "").strip())
+        if not safe_name or safe_name != (image_name or "").strip():
+            raise ValueError("Tên ảnh không hợp lệ.")
+        img_path = os.path.join(ctx["images_dir"], safe_name)
+        if not os.path.exists(img_path):
+            raise FileNotFoundError(f"Không tìm thấy ảnh: {safe_name}")
+
+        export_classes = self._resolve_export_classes(ctx, class_names)
+        with Image.open(img_path) as im:
+            w, h = im.size
+        ann_items = self._read_image_annotations(ctx["annotations_dir"], safe_name)
+        stem = os.path.splitext(safe_name)[0]
+
+        txt_content = "\n".join(annotations_to_yolo_lines(ann_items, w, h, export_classes))
+        json_obj = annotations_to_labelme_json(ann_items, safe_name, w, h)
+        return {
+            "format": fmt,
+            "image_name": safe_name,
+            "stem": stem,
+            "txt_content": txt_content,
+            "json_content": json.dumps(json_obj, ensure_ascii=False, indent=2),
+            "classes_txt": "\n".join(export_classes) + "\n",
+            "classes": export_classes,
+            "count": len(ann_items),
+        }
+
+    def export_dataset(self, export_format="txt", layout="split", output_dir=None, class_names=None):
+        ctx = self.get_active_context()
+        fmt = (export_format or "txt").strip().lower()
+        if fmt not in ("txt", "json", "both"):
+            raise ValueError("Định dạng xuất không hợp lệ (chỉ chấp nhận 'txt', 'json', 'both').")
+        lay = (layout or "split").strip().lower()
+        if lay not in ("split", "flat"):
+            raise ValueError("Cấu trúc thư mục xuất không hợp lệ (chỉ chấp nhận 'split' hoặc 'flat').")
+
         images_dir = ctx["images_dir"]
         ann_dir = ctx["annotations_dir"]
         labels_dir = ctx["labels_dir"]
-        dataset_dir = ctx["dataset_dir"]
-        class_names = ctx["classes"]
+        export_classes = self._resolve_export_classes(ctx, class_names)
 
         images = sorted([f for f in os.listdir(images_dir) if is_image_file(f)])
         if not images:
             raise ValueError("Không có ảnh nào trong project hiện tại để xuất.")
 
-        # Clean stale files in train/val/test before exporting so dataset remains 100% synced
-        for split in ("train", "val", "test"):
-            for sub in ("images", "labels"):
-                target_sub = os.path.join(dataset_dir, sub, split)
-                if os.path.isdir(target_sub):
-                    shutil.rmtree(target_sub, ignore_errors=True)
-                if split in ("train", "val"):
-                    os.makedirs(target_sub, exist_ok=True)
+        target_dir = self._resolve_export_dir(ctx, output_dir)
+        want_txt = fmt in ("txt", "both")
+        want_json = fmt in ("json", "both")
+        is_default_target = os.path.normcase(target_dir) == os.path.normcase(ctx["dataset_dir"])
+        sync_project_labels = want_txt and is_default_target and (export_classes == ctx["classes"])
 
-        recorded_splits = (ctx["manifest"] or {}).get("splits", {})
-        has_explicit_train_val = (
-            any(recorded_splits.get(img) == "train" for img in images)
-            and any(recorded_splits.get(img) == "val" for img in images)
-        )
+        if lay == "split":
+            for split in ("train", "val", "test"):
+                for sub in ("images", "labels", "annotations_json"):
+                    target_sub = os.path.join(target_dir, sub, split)
+                    if os.path.isdir(target_sub):
+                        shutil.rmtree(target_sub, ignore_errors=True)
+                    if split in ("train", "val") and (
+                        sub == "images" or (sub == "labels" and want_txt) or (sub == "annotations_json" and want_json)
+                    ):
+                        os.makedirs(target_sub, exist_ok=True)
 
-        if has_explicit_train_val:
-            split_for = {img: (recorded_splits.get(img) or "train") for img in images}
+            recorded_splits = (ctx["manifest"] or {}).get("splits", {})
+            has_explicit_train_val = (
+                any(recorded_splits.get(img) == "train" for img in images)
+                and any(recorded_splits.get(img) == "val" for img in images)
+            )
+            if has_explicit_train_val:
+                split_for = {img: (recorded_splits.get(img) or "train") for img in images}
+            else:
+                val_ratio = 0.2
+                shuffled = list(images)
+                random.seed(42)
+                random.shuffle(shuffled)
+                val_count = max(1, int(len(shuffled) * val_ratio)) if len(shuffled) > 1 else 0
+                val_set = set(shuffled[:val_count])
+                split_for = {img: ("val" if img in val_set else "train") for img in images}
         else:
-            val_ratio = 0.2
-            shuffled = list(images)
-            random.seed(42)
-            random.shuffle(shuffled)
-            val_count = max(1, int(len(shuffled) * val_ratio)) if len(shuffled) > 1 else 0
-            val_set = set(shuffled[:val_count])
-            split_for = {img: ("val" if img in val_set else "train") for img in images}
+            split_for = {img: "" for img in images}
 
         stats = {
+            "total_images": len(images),
             "train_images": 0,
             "val_images": 0,
             "test_images": 0,
             "total_annotations": 0,
-            "class_counts": {c: 0 for c in class_names},
+            "grouped_annotations": 0,
+            "class_counts": {c: 0 for c in export_classes},
         }
 
         for img_name in images:
-            split = split_for[img_name]
-            if split not in ("train", "val", "test"):
-                split = "train"
-            os.makedirs(os.path.join(dataset_dir, "images", split), exist_ok=True)
-            os.makedirs(os.path.join(dataset_dir, "labels", split), exist_ok=True)
-
             src_img = os.path.join(images_dir, img_name)
-            dst_img = os.path.join(dataset_dir, "images", split, img_name)
-            shutil.copy2(src_img, dst_img)
-            stats[f"{split}_images"] += 1
-
+            stem = os.path.splitext(img_name)[0]
             with Image.open(src_img) as im:
                 w, h = im.size
 
-            ann_path = os.path.join(ann_dir, f"{img_name}.json")
-            ann_items = []
-            if os.path.exists(ann_path):
-                try:
-                    with open(ann_path, "r", encoding="utf-8") as f:
-                        ann_items = json.load(f).get("annotations", [])
-                except Exception as e:
-                    print(f"[!] Error reading {ann_path}: {e}")
-
+            ann_items = self._read_image_annotations(ann_dir, img_name)
             for item in ann_items:
-                cname = item.get("class_name")
+                cname = (item.get("class_name") or "").strip()
+                counted = False
                 if cname in stats["class_counts"]:
                     stats["class_counts"][cname] += 1
                     stats["total_annotations"] += 1
+                    counted = True
+                elif want_json and cname:
+                    stats["total_annotations"] += 1
+                    counted = True
+                if counted and normalize_group_id(item.get("group_id")) is not None:
+                    stats["grouped_annotations"] += 1
 
-            yolo_lines = annotations_to_yolo_lines(ann_items, w, h, class_names)
-            stem = os.path.splitext(img_name)[0]
-            txt_content = "\n".join(yolo_lines)
-            atomic_write_text(os.path.join(dataset_dir, "labels", split, f"{stem}.txt"), txt_content)
-            atomic_write_text(os.path.join(labels_dir, f"{stem}.txt"), txt_content)
+            if lay == "split":
+                split = split_for[img_name]
+                if split not in ("train", "val", "test"):
+                    split = "train"
+                os.makedirs(os.path.join(target_dir, "images", split), exist_ok=True)
+                shutil.copy2(src_img, os.path.join(target_dir, "images", split, img_name))
+                stats[f"{split}_images"] += 1
 
-        yaml_content = _build_yolo_yaml(
-            dataset_dir,
-            class_names,
-            train_rel="images/train",
-            val_rel="images/val",
-            test_rel="images/test" if stats["test_images"] > 0 else "",
-        )
-        yaml_path = os.path.join(dataset_dir, "data.yaml")
-        atomic_write_text(yaml_path, yaml_content)
+                if want_txt:
+                    os.makedirs(os.path.join(target_dir, "labels", split), exist_ok=True)
+                    txt_content = "\n".join(annotations_to_yolo_lines(ann_items, w, h, export_classes))
+                    atomic_write_text(os.path.join(target_dir, "labels", split, f"{stem}.txt"), txt_content)
+                    if sync_project_labels:
+                        atomic_write_text(os.path.join(labels_dir, f"{stem}.txt"), txt_content)
+                if want_json:
+                    os.makedirs(os.path.join(target_dir, "annotations_json", split), exist_ok=True)
+                    json_obj = annotations_to_labelme_json(ann_items, img_name, w, h)
+                    atomic_write_json(os.path.join(target_dir, "annotations_json", split, f"{stem}.json"), json_obj)
+            else:
+                shutil.copy2(src_img, os.path.join(target_dir, img_name))
+                if want_txt:
+                    txt_content = "\n".join(annotations_to_yolo_lines(ann_items, w, h, export_classes))
+                    atomic_write_text(os.path.join(target_dir, f"{stem}.txt"), txt_content)
+                    if sync_project_labels:
+                        atomic_write_text(os.path.join(labels_dir, f"{stem}.txt"), txt_content)
+                if want_json:
+                    json_obj = annotations_to_labelme_json(ann_items, img_name, w, h)
+                    atomic_write_json(os.path.join(target_dir, f"{stem}.json"), json_obj)
 
+        yaml_path = None
+        if want_txt:
+            if lay == "split":
+                yaml_content = _build_yolo_yaml(
+                    target_dir,
+                    export_classes,
+                    train_rel="images/train",
+                    val_rel="images/val",
+                    test_rel="images/test" if stats["test_images"] > 0 else "",
+                )
+            else:
+                yaml_content = _build_yolo_yaml(target_dir, export_classes, train_rel=".", val_rel=".")
+            yaml_path = os.path.join(target_dir, "data.yaml")
+            atomic_write_text(yaml_path, yaml_content)
+            atomic_write_text(os.path.join(target_dir, "classes.txt"), "\n".join(export_classes) + "\n")
+
+        fmt_desc = {"txt": "YOLO (.txt)", "json": "JSON (Labelme + Group ID)", "both": "YOLO (.txt) + JSON"}[fmt]
         return {
             "success": True,
-            "message": f"Xuất nhãn YOLO thành công! Bộ dữ liệu đã được lưu tại:\n{dataset_dir}",
-            "dataset_dir": dataset_dir,
+            "message": f"Xuất nhãn {fmt_desc} thành công! Dữ liệu đã lưu tại:\n{target_dir}",
+            "format": fmt,
+            "layout": lay,
+            "dataset_dir": target_dir,
             "data_yaml": yaml_path,
+            "json_dir": (os.path.join(target_dir, "annotations_json") if lay == "split" else target_dir) if want_json else None,
             "stats": stats,
-            "classes": class_names,
+            "classes": export_classes,
             "project_name": ctx["name"],
         }
+
+    def export_active_yolo(self):
+        return self.export_dataset(export_format="txt", layout="split")
