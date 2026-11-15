@@ -41,7 +41,23 @@ if "%CUR_BRANCH%"=="HEAD" set "CUR_BRANCH=main"
 set "OLD_HEAD="
 for /f "delims=" %%h in ('git rev-parse HEAD 2^>nul') do set "OLD_HEAD=%%h"
 
-:: 5. Sao luu tam cac thay doi cuc bo (neu co) de tranh loi xung dot khi git pull
+:: 5. Tu dong don trang thai xung dot/unmerged neu con sot lai tu lan truoc
+set "HAS_UNMERGED="
+for /f "delims=" %%u in ('git ls-files -u 2^>nul') do set "HAS_UNMERGED=1"
+if defined HAS_UNMERGED goto :recover_unmerged
+if exist ".git\MERGE_HEAD" goto :recover_unmerged
+if exist ".git\rebase-merge" goto :recover_unmerged
+if exist ".git\rebase-apply" goto :recover_unmerged
+goto :check_local_changes
+
+:recover_unmerged
+echo [!] Phat hien trang thai xung dot Git con sot lai, dang tu dong khoi phuc...
+git merge --abort >nul 2>nul
+git rebase --abort >nul 2>nul
+git reset --hard HEAD >nul 2>nul
+
+:: 6. Sao luu tam cac thay doi cuc bo (neu co) de tranh xung dot khi cap nhat
+:check_local_changes
 set "DID_STASH=0"
 git diff --quiet >nul 2>nul
 if errorlevel 1 goto :stash_local
@@ -55,14 +71,16 @@ if not errorlevel 1 set "DID_STASH=1"
 
 :do_pull
 echo [*] Dang kiem tra va tai ban cap nhat moi nhat tu GitHub (nhanh %CUR_BRANCH%)...
-git -c user.name="RoboLabel Updater" -c user.email="updater@local" pull origin %CUR_BRANCH%
+git fetch origin %CUR_BRANCH%
+if errorlevel 1 goto :pull_fail
+git reset --hard origin/%CUR_BRANCH% >nul 2>nul
 if errorlevel 1 goto :pull_fail
 
-:: Khoi phuc thay doi cuc bo neu truoc do da sao luu (khong gay hong file neu xung dot)
+:: Khoi phuc thay doi cuc bo neu truoc do da sao luu (reset --hard HEAD neu xung dot de tranh ket unmerged files)
 if "%DID_STASH%"=="0" goto :check_diff
 git stash apply >nul 2>nul
 if not errorlevel 1 goto :drop_stash
-git checkout -- . >nul 2>nul
+git reset --hard HEAD >nul 2>nul
 echo [!] Luu y: Thay doi cuc bo truoc do co xung dot voi ban moi nen da duoc giu lai an toan trong "git stash".
 goto :check_diff
 

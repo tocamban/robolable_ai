@@ -307,11 +307,18 @@ robolabel_app/
      git checkout -- .
      ```
      Sau đó nhấp đúp `update.bat` sẽ hoạt động bình thường.
-2. **Chạy `setup.bat` báo không tìm thấy Python:**
+2. **`update.bat` báo `error: Pulling is not possible because you have unmerged files`:**
+   - **Nguyên nhân:** File cục bộ đang có xung đột Git chưa dọn từ lần kéo/gộp trước khiến `git pull` bị chặn.
+   - **Cách khắc phục 1 dòng:** Mở `cmd` ngay trong thư mục dự án và chạy:
+     ```cmd
+     git fetch origin main && git reset --hard origin/main
+     ```
+     *(Từ bản `v1.2` mới nhất trở đi, `update.bat` đã tự động phát hiện và dọn trạng thái `unmerged` trước khi cập nhật.)*
+3. **Chạy `setup.bat` báo không tìm thấy Python:**
    - Cài lại Python 3.10–3.14 và nhớ tích **`Add python.exe to PATH`** rồi mở lại `setup.bat`.
-3. **Máy có GPU NVIDIA nhưng app báo chạy `CPU`:**
+4. **Máy có GPU NVIDIA nhưng app báo chạy `CPU`:**
    - Bấm vào nút **GPU / CPU** trên Header để chuyển sang **Chạy bằng GPU (CUDA)**; nếu hộp thoại báo *venv đang cài PyTorch bản CPU*, chạy lại **`setup.bat`** (hoặc chạy lệnh cài PyTorch `cu126` hiển thị trong hộp thoại) rồi khởi động lại ứng dụng.
-4. **Lỗi không mở được `http://127.0.0.1:5050` hoặc kẹt port:**
+5. **Lỗi không mở được `http://127.0.0.1:5050` hoặc kẹt port:**
    - Chạy **`stop_server.bat`** để dọn tiến trình cũ trên port `5050`, sau đó mở lại bằng **`run_app.bat`**.
 
 ---
