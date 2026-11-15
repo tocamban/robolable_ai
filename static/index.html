@@ -705,6 +705,8 @@
       display: flex;
       flex-direction: column;
       gap: 3px;
+      min-width: 0;
+      overflow: hidden;
     }
     .export-choice-card:hover {
       border-color: #c4b5fd;
@@ -1217,8 +1219,17 @@
     }
     .modal-card.modal-guide .modal-body {
       overflow-y: auto;
+      overflow-x: hidden;
       max-height: calc(90vh - 115px);
       gap: 14px;
+    }
+    .modal-card.modal-guide .modal-tabs {
+      flex-wrap: wrap;
+    }
+    .modal-card.modal-guide .modal-tab {
+      font-size: 11.5px;
+      padding: 7px 10px;
+      white-space: nowrap;
     }
     .guide-tab-panel {
       display: none;
@@ -1941,7 +1952,7 @@
               <div style="font-size:12px; font-weight:700; color:#1e293b;">
                 <i class="fa-regular fa-image" style="color:var(--primary);"></i> Chỉ ảnh hiện tại
               </div>
-              <div style="font-size:11px; color:#64748b;" id="expCurrentImgHint">Tải file nhãn của ảnh đang mở</div>
+              <div style="font-size:11px; color:#64748b; overflow-wrap:anywhere; word-break:break-word;" id="expCurrentImgHint">Tải file nhãn của ảnh đang mở</div>
             </div>
           </div>
         </div>
@@ -2039,6 +2050,9 @@
           <button type="button" class="modal-tab" id="guideTabBtnEditTools" onclick="switchGuideTab('edit_tools')">
             <i class="fa-solid fa-pen-ruler"></i> Tinh chỉnh Polygon
           </button>
+          <button type="button" class="modal-tab" id="guideTabBtnGroupExport" onclick="switchGuideTab('group_export')">
+            <i class="fa-solid fa-link"></i> Group ID &amp; Xuất nhãn
+          </button>
           <button type="button" class="modal-tab" id="guideTabBtnWorkflow" onclick="switchGuideTab('workflow')">
             <i class="fa-solid fa-diagram-project"></i> Project, GPU &amp; Phím tắt
           </button>
@@ -2049,7 +2063,7 @@
           <div class="guide-intro-banner">
             <i class="fa-solid fa-lightbulb" style="font-size:18px; color:#6d28d9; flex-shrink:0;"></i>
             <div>
-              <b>RoboLabel AI</b> kết hợp mô hình phân đoạn <b>SAM 2.1</b> (tách viền Polygon mượt) và <b>CLIP ViT-B/32</b> (tự nhận diện tên nhãn) cùng khả năng lưu tự động từng thao tác và xuất thẳng sang chuẩn <b>YOLO Detection / Segmentation</b>.
+              <b>RoboLabel AI</b> kết hợp <b>SAM 2.1</b> (tách viền Polygon mượt), <b>CLIP ViT-B/32</b> (tự nhận diện nhãn), gán <b>Group ID</b> liên kết cụm (quả – đài – cuống) và xuất nhãn tùy chọn sang <b>YOLO (.txt)</b> hoặc <b>Labelme (.json)</b>.
             </div>
           </div>
 
@@ -2083,31 +2097,48 @@
               <rect x="596" y="13" width="92" height="24" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
               <text x="642" y="29" text-anchor="middle" font-size="9.5" font-weight="700" fill="#334155">Quản lý Project</text>
               <rect x="694" y="13" width="76" height="24" rx="12" fill="#7c3aed"/>
-              <text x="732" y="29" text-anchor="middle" font-size="9.5" font-weight="700" fill="#ffffff">Export YOLO</text>
+              <text x="732" y="29" text-anchor="middle" font-size="9.5" font-weight="700" fill="#ffffff">Xuất nhãn</text>
               <!-- Badge (1) -->
               <circle cx="448" cy="25" r="11" fill="#7c3aed"/>
               <text x="448" y="29" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">1</text>
 
               <!-- (2) Left Sidebar -->
               <rect x="4" y="52" width="166" height="324" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
-              <text x="16" y="72" font-size="10.5" font-weight="700" fill="#334155">Classes &amp; Objects</text>
-              <rect x="14" y="80" width="146" height="24" rx="6" fill="#f5f3ff" stroke="#ddd6fe"/>
-              <text x="22" y="96" font-size="9.5" font-weight="700" fill="#6d28d9">Tự nhận diện Class</text>
-              <rect x="130" y="86" width="24" height="12" rx="6" fill="#7c3aed"/>
-              <circle cx="148" cy="92" r="4.5" fill="#ffffff"/>
+              <text x="14" y="70" font-size="10.5" font-weight="700" fill="#334155">Classes &amp; Group ID</text>
+              <rect x="12" y="78" width="150" height="22" rx="6" fill="#f5f3ff" stroke="#ddd6fe"/>
+              <text x="20" y="92" font-size="9" font-weight="700" fill="#6d28d9">Tự nhận diện Class</text>
+              <rect x="134" y="83" width="22" height="11" rx="5.5" fill="#7c3aed"/>
+              <circle cx="150" cy="88.5" r="4" fill="#ffffff"/>
+              <!-- Group ID mới bar -->
+              <rect x="12" y="104" width="150" height="24" rx="6" fill="#f8fafc" stroke="#cbd5e1"/>
+              <text x="18" y="119" font-size="8.5" font-weight="700" fill="#334155">Group ID mới</text>
+              <rect x="82" y="109" width="14" height="14" rx="4" fill="#e2e8f0"/><text x="89" y="119" text-anchor="middle" font-size="9" font-weight="700" fill="#475569">-</text>
+              <rect x="98" y="108" width="22" height="16" rx="4" fill="#ffffff" stroke="#7c3aed"/><text x="109" y="119" text-anchor="middle" font-size="9" font-weight="700" fill="#6d28d9">1</text>
+              <rect x="122" y="109" width="18" height="14" rx="4" fill="#e2e8f0"/><text x="131" y="119" text-anchor="middle" font-size="8.5" font-weight="700" fill="#475569">+1</text>
+              <rect x="142" y="109" width="14" height="14" rx="4" fill="#e2e8f0"/><text x="149" y="119" text-anchor="middle" font-size="9" font-weight="700" fill="#475569">×</text>
               <!-- Class rows -->
-              <circle cx="24" cy="120" r="4" fill="#f97316"/><text x="34" y="123" font-size="9.5" fill="#334155">almost_ripe</text>
-              <circle cx="24" cy="140" r="4" fill="#a855f7"/><text x="34" y="143" font-size="9.5" fill="#334155">calyx</text>
-              <circle cx="24" cy="160" r="4" fill="#22c55e"/><text x="34" y="163" font-size="9.5" fill="#334155">unripe</text>
-              <rect x="14" y="170" width="146" height="22" rx="5" fill="#eef2ff"/>
-              <circle cx="24" cy="181" r="4" fill="#ef4444"/><text x="34" y="185" font-size="9.5" font-weight="700" fill="#1e293b">ripe (Đang chọn)</text>
-              <text x="14" y="212" font-size="10" font-weight="700" fill="#475569">Current Objects (2)</text>
-              <rect x="14" y="220" width="146" height="24" rx="6" fill="#f8fafc" stroke="#cbd5e1"/>
-              <circle cx="24" cy="232" r="4" fill="#ef4444"/><text x="34" y="236" font-size="9.5" font-weight="700" fill="#1e293b">ripe • POLY #1</text>
-              <rect x="14" y="250" width="146" height="24" rx="6" fill="#f8fafc" stroke="#cbd5e1"/>
-              <circle cx="24" cy="262" r="4" fill="#22c55e"/><text x="34" y="266" font-size="9.5" font-weight="700" fill="#1e293b">unripe • POLY #2</text>
-              <rect x="14" y="340" width="146" height="24" rx="6" fill="#fee2e2" stroke="#fecaca"/>
-              <text x="87" y="356" text-anchor="middle" font-size="9" font-weight="700" fill="#ef4444">Xóa tất cả nhãn ảnh</text>
+              <circle cx="22" cy="142" r="3.5" fill="#a855f7"/><text x="31" y="145" font-size="9" fill="#334155">calyx</text>
+              <circle cx="22" cy="158" r="3.5" fill="#eab308"/><text x="31" y="161" font-size="9" fill="#334155">stem</text>
+              <rect x="12" y="167" width="150" height="19" rx="5" fill="#eef2ff"/>
+              <circle cx="22" cy="177" r="3.5" fill="#ef4444"/><text x="31" y="180" font-size="9" font-weight="700" fill="#1e293b">ripe (Đang chọn)</text>
+              <text x="12" y="202" font-size="9.5" font-weight="700" fill="#475569">Current Objects (3)</text>
+              <!-- Object 1 -->
+              <rect x="12" y="210" width="150" height="23" rx="5" fill="#f5f3ff" stroke="#7c3aed"/>
+              <circle cx="20" cy="221.5" r="3.5" fill="#ef4444"/><text x="28" y="224.5" font-size="8.5" font-weight="700" fill="#1e293b">ripe</text>
+              <rect x="82" y="214" width="20" height="15" rx="3" fill="#dcfce7" stroke="#16a34a"/><text x="92" y="224.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="#15803d">1</text>
+              <text x="107" y="224.5" font-size="8" fill="#64748b">POLY #1</text>
+              <!-- Object 2 -->
+              <rect x="12" y="237" width="150" height="23" rx="5" fill="#f8fafc" stroke="#cbd5e1"/>
+              <circle cx="20" cy="248.5" r="3.5" fill="#a855f7"/><text x="28" y="251.5" font-size="8.5" font-weight="700" fill="#1e293b">calyx</text>
+              <rect x="82" y="241" width="20" height="15" rx="3" fill="#dcfce7" stroke="#16a34a"/><text x="92" y="251.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="#15803d">1</text>
+              <text x="107" y="251.5" font-size="8" fill="#64748b">POLY #2</text>
+              <!-- Object 3 -->
+              <rect x="12" y="264" width="150" height="23" rx="5" fill="#f8fafc" stroke="#cbd5e1"/>
+              <circle cx="20" cy="275.5" r="3.5" fill="#eab308"/><text x="28" y="278.5" font-size="8.5" font-weight="700" fill="#1e293b">stem</text>
+              <rect x="82" y="268" width="20" height="15" rx="3" fill="#dcfce7" stroke="#16a34a"/><text x="92" y="278.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="#15803d">1</text>
+              <text x="107" y="278.5" font-size="8" fill="#64748b">POLY #3</text>
+              <rect x="12" y="344" width="150" height="22" rx="6" fill="#fee2e2" stroke="#fecaca"/>
+              <text x="87" y="359" text-anchor="middle" font-size="9" font-weight="700" fill="#ef4444">Xóa tất cả nhãn ảnh</text>
               <!-- Badge (2) -->
               <circle cx="154" cy="68" r="11" fill="#7c3aed"/>
               <text x="154" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">2</text>
@@ -2119,13 +2150,19 @@
               <!-- Left unripe strawberry -->
               <path d="M 295 162 C 275 162, 266 192, 276 226 C 284 248, 304 252, 314 232 C 325 204, 316 164, 295 162 Z" fill="#bef264" opacity="0.88"/>
               <path d="M 282 162 Q 295 148 308 162 L 296 168 Z" fill="#65a30d"/>
-              <!-- Center ripe strawberry + polygon contour -->
-              <path d="M 412 138 C 378 136, 365 178, 378 228 C 390 270, 428 278, 444 238 C 460 194, 446 140, 412 138 Z" fill="#dc2626"/>
-              <path d="M 384 142 Q 412 120 442 142 L 424 152 L 412 146 L 398 153 Z" fill="#65a30d"/>
-              <path d="M 382 148 C 370 176, 374 220, 386 246 C 402 274, 434 268, 446 234 C 458 194, 450 156, 436 145 L 422 153 L 412 147 L 397 154 Z" fill="rgba(239,68,68,0.28)" stroke="#ef4444" stroke-width="2.5"/>
-              <rect x="372" y="130" width="90" height="145" rx="3" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="4 3"/>
-              <rect x="380" y="114" width="60" height="15" rx="4" fill="#ef4444"/>
-              <text x="410" y="125" text-anchor="middle" font-size="8.5" font-weight="700" fill="#ffffff">ripe #1</text>
+              <!-- Stem polygon (group_id=1) -->
+              <path d="M 407 104 L 417 104 L 415 137 L 408 137 Z" fill="rgba(234,179,8,0.45)" stroke="#16a34a" stroke-width="2" stroke-dasharray="4 3"/>
+              <rect x="424" y="101" width="76" height="14" rx="4" fill="#eab308"/>
+              <text x="462" y="111" text-anchor="middle" font-size="8" font-weight="700" fill="#1e293b">[ID:1] stem #3</text>
+              <!-- Calyx polygon (group_id=1) -->
+              <path d="M 384 142 Q 412 124 442 142 L 424 152 L 412 146 L 398 153 Z" fill="rgba(168,85,247,0.38)" stroke="#16a34a" stroke-width="2" stroke-dasharray="4 3"/>
+              <rect x="446" y="130" width="78" height="14" rx="4" fill="#a855f7"/>
+              <text x="485" y="140" text-anchor="middle" font-size="8" font-weight="700" fill="#ffffff">[ID:1] calyx #2</text>
+              <!-- Center ripe strawberry polygon (selected, group_id=1) -->
+              <path d="M 412 145 C 378 145, 366 184, 378 228 C 390 270, 428 278, 444 238 C 460 194, 446 145, 412 145 Z" fill="#dc2626"/>
+              <path d="M 382 150 C 370 176, 374 220, 386 246 C 402 274, 434 268, 446 234 C 458 194, 450 156, 436 147 L 422 153 L 412 147 L 397 154 Z" fill="rgba(239,68,68,0.28)" stroke="#7c3aed" stroke-width="2.5"/>
+              <rect x="364" y="276" width="96" height="15" rx="4" fill="#7c3aed"/>
+              <text x="412" y="287" text-anchor="middle" font-size="8.5" font-weight="700" fill="#ffffff">★ [ID:1] ripe #1</text>
               <!-- Badge (3) -->
               <circle cx="254" cy="92" r="11" fill="#7c3aed"/>
               <text x="254" y="96" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">3</text>
@@ -2175,11 +2212,11 @@
             <div class="guide-legend-grid">
               <div class="guide-legend-item">
                 <span class="guide-num-badge">1</span>
-                <div><b>Thanh Header:</b> Đổi Project, chọn model <b>SAM 2.1 Tiny/Large</b>, bật/tắt <b>GPU/CPU &amp; Benchmark</b>, theo dõi trạng thái tự động lưu và <b>Export YOLO</b>.</div>
+                <div><b>Thanh Header:</b> Đổi Project, chọn model <b>SAM 2.1 Tiny/Large</b>, bật/tắt <b>GPU/CPU &amp; Benchmark</b>, theo dõi trạng thái tự động lưu và mở <b>Xuất nhãn (.txt / .json)</b>.</div>
               </div>
               <div class="guide-legend-item">
                 <span class="guide-num-badge">2</span>
-                <div><b>Bảng Classes &amp; Objects:</b> Bật/tắt <i>Tự nhận diện Class</i>, chọn nhãn đang vẽ, đổi tên lớp nhanh, hoặc nhấn <b>Tẩy bớt / Đắp thêm</b> cho đối tượng đang chọn.</div>
+                <div><b>Bảng Classes, Group ID &amp; Objects:</b> Bật/tắt <i>Tự nhận diện Class</i>, đặt <b>Group ID mới</b> (<code>-</code> / <code>+1</code> / <code>×</code>), chỉnh nhanh ô <code>ID</code> trên từng vùng, đổi class hoặc nhấn <b>Tẩy bớt / Đắp thêm</b>.</div>
               </div>
               <div class="guide-legend-item">
                 <span class="guide-num-badge">3</span>
@@ -2206,7 +2243,7 @@
           <div class="guide-intro-banner">
             <i class="fa-solid fa-wand-magic-sparkles" style="font-size:18px; color:#6d28d9; flex-shrink:0;"></i>
             <div>
-              <b>Mẹo chọn công cụ AI:</b> Dùng <b>SAM 2.1 (Tiny)</b> để đánh nhãn tốc độ cao (hoặc <b>Large</b> khi vật thể phức tạp). Nếu bật <i>Tự nhận diện Class</i>, CLIP sẽ tự gán nhãn thay bạn ngay sau khi vẽ xong.
+              <b>Mẹo chọn công cụ AI &amp; Gán ID:</b> Dùng <b>SAM 2.1 (Tiny)</b> để đánh nhãn nhanh (hoặc <b>Large</b> khi vật thể phức tạp). Nếu bật <i>Tự nhận diện Class</i>, CLIP tự chọn tên nhãn; mọi vùng vẽ mới đều tự động gắn <b>Group ID mới</b> nếu bạn đã nhập sẵn ở cột trái.
             </div>
           </div>
 
@@ -2402,7 +2439,7 @@
                   <span><i class="fa-solid fa-eraser" style="color:#ef4444;"></i> Cục Tẩy Polygon</span>
                   <span><span class="kbd-tag">E</span> <span class="kbd-tag">[</span> <span class="kbd-tag">]</span></span>
                 </div>
-                <div class="guide-card-desc">Xóa phần mask bị tràn ra nền hoặc lem sang vật thể khác mà vẫn giữ nguyên phần đúng.</div>
+                <div class="guide-card-desc">Xóa phần mask bị tràn ra nền hoặc lem sang vật thể khác mà vẫn giữ nguyên phần đúng. Nếu vết tẩy cắt rời polygon làm nhiều mảnh (vd: cuống bị lá che), mọi mảnh tách ra đều tự giữ nguyên <b>Group ID</b>.</div>
                 <ul class="guide-steps-list">
                   <li>Click chọn đối tượng (hoặc nhấn <b>Tẩy bớt</b> ở cột trái).</li>
                   <li>Dùng phím <span class="kbd-tag">[</span> / <span class="kbd-tag">]</span> hoặc thanh trượt phía trên để chỉnh cỡ tẩy, rồi quẹt qua vùng thừa.</li>
@@ -2517,7 +2554,179 @@
           </div>
         </div>
 
-        <!-- TAB 4: Project, GPU & Shortcuts -->
+        <!-- TAB 4: Group ID & Custom Export -->
+        <div class="guide-tab-panel" id="guideTabGroupExport">
+          <div class="guide-intro-banner">
+            <i class="fa-solid fa-link" style="font-size:18px; color:#6d28d9; flex-shrink:0;"></i>
+            <div>
+              <b>Liên kết cụm bằng Group ID:</b> File YOLO <code>.txt</code> chuẩn không lưu <code>group_id</code>, nên bạn gán chung một số <code>group_id</code> (1, 2, ...) cho <b>thịt quả + đài hoa + cuống</b> để giữ quan hệ cụm trong file <b>.json</b> (phục vụ đánh giá ghép cặp).
+            </div>
+          </div>
+
+          <div class="guide-card-grid">
+            <!-- Group Card 1: Group ID mới (+1) per cluster -->
+            <div class="guide-card">
+              <div class="guide-illus-box">
+                <svg viewBox="0 0 360 135" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="360" height="135" rx="8" fill="#ffffff"/>
+                  <!-- Cluster 1 -->
+                  <rect x="8" y="8" width="154" height="119" rx="7" fill="#1e293b"/>
+                  <text x="16" y="23" font-size="8.5" font-weight="700" fill="#93c5fd">Cụm 1 (Group ID mới = 1)</text>
+                  <rect x="76" y="34" width="6" height="22" fill="#eab308" stroke="#2563eb" stroke-width="1.5"/>
+                  <path d="M 61 58 Q 79 47 97 58 L 86 64 L 79 59 L 71 64 Z" fill="#a855f7" stroke="#2563eb" stroke-width="1.5"/>
+                  <path d="M 79 61 C 61 61, 55 82, 63 102 C 71 116, 89 116, 97 100 C 105 82, 97 61, 79 61 Z" fill="rgba(239,68,68,0.65)" stroke="#2563eb" stroke-width="2"/>
+                  <rect x="88" y="34" width="64" height="13" rx="3" fill="#eab308"/><text x="120" y="43.5" text-anchor="middle" font-size="7.5" font-weight="700" fill="#1e293b">[ID:1] stem</text>
+                  <rect x="98" y="52" width="60" height="13" rx="3" fill="#a855f7"/><text x="128" y="61.5" text-anchor="middle" font-size="7.5" font-weight="700" fill="#ffffff">[ID:1] calyx</text>
+                  <rect x="98" y="86" width="58" height="13" rx="3" fill="#ef4444"/><text x="127" y="95.5" text-anchor="middle" font-size="7.5" font-weight="700" fill="#ffffff">[ID:1] ripe</text>
+                  <!-- Arrow +1 -->
+                  <line x1="168" y1="67" x2="194" y2="67" stroke="#7c3aed" stroke-width="2.5"/>
+                  <polygon points="194,62 203,67 194,72" fill="#7c3aed"/>
+                  <rect x="169" y="44" width="28" height="16" rx="4" fill="#ede9fe" stroke="#c4b5fd"/>
+                  <text x="183" y="55" text-anchor="middle" font-size="9" font-weight="700" fill="#6d28d9">+1</text>
+                  <!-- Cluster 2 -->
+                  <rect x="206" y="8" width="146" height="119" rx="7" fill="#1e293b"/>
+                  <text x="214" y="23" font-size="8.5" font-weight="700" fill="#86efac">Cụm 2 (Group ID = 2)</text>
+                  <rect x="268" y="36" width="6" height="20" fill="#eab308" stroke="#16a34a" stroke-width="1.5"/>
+                  <path d="M 254 58 Q 271 48 288 58 L 278 64 L 271 59 L 263 64 Z" fill="#a855f7" stroke="#16a34a" stroke-width="1.5"/>
+                  <path d="M 271 61 C 254 61, 248 82, 256 102 C 264 116, 281 116, 289 100 C 296 82, 289 61, 271 61 Z" fill="rgba(34,197,94,0.55)" stroke="#16a34a" stroke-width="2"/>
+                  <rect x="280" y="35" width="64" height="13" rx="3" fill="#eab308"/><text x="312" y="44.5" text-anchor="middle" font-size="7.5" font-weight="700" fill="#1e293b">[ID:2] stem</text>
+                  <rect x="284" y="54" width="62" height="13" rx="3" fill="#a855f7"/><text x="315" y="63.5" text-anchor="middle" font-size="7.5" font-weight="700" fill="#ffffff">[ID:2] calyx</text>
+                  <rect x="282" y="86" width="64" height="13" rx="3" fill="#22c55e"/><text x="314" y="95.5" text-anchor="middle" font-size="7.5" font-weight="700" fill="#ffffff">[ID:2] unripe</text>
+                </svg>
+              </div>
+              <div class="guide-card-body">
+                <div class="guide-card-title">
+                  <span><i class="fa-solid fa-circle-nodes" style="color:#2563eb;"></i> Gán Group ID mới theo từng cụm quả</span>
+                </div>
+                <div class="guide-card-desc">Đặt ID trước khi vẽ giúp các bộ phận của cùng một quả dâu tự động nhận chung mã liên kết mà không phải sửa tay từng vùng.</div>
+                <ul class="guide-steps-list">
+                  <li>Nhập <code>1</code> vào ô <b>Group ID mới</b> ở cột trái, rồi vẽ lần lượt quả (<code>ripe</code>), đài (<code>calyx</code>), cuống (<code>stem</code>).</li>
+                  <li>Xong quả 1, bấm <b>+1</b> để tăng lên <code>2</code> cho quả kế tiếp; bấm <b>×</b> nếu muốn vẽ nhãn không gắn ID.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Group Card 2: Split stem occluded by a leaf -->
+            <div class="guide-card">
+              <div class="guide-illus-box">
+                <svg viewBox="0 0 360 135" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="360" height="135" rx="8" fill="#ffffff"/>
+                  <!-- Wrong side -->
+                  <rect x="8" y="8" width="142" height="119" rx="7" fill="#1e293b"/>
+                  <text x="16" y="23" font-size="8.5" font-weight="700" fill="#fca5a5">✕ Không vẽ xuyên qua lá</text>
+                  <rect x="73" y="34" width="7" height="72" fill="rgba(239,68,68,0.4)" stroke="#ef4444" stroke-width="2" stroke-dasharray="3 2"/>
+                  <ellipse cx="77" cy="70" rx="36" ry="15" transform="rotate(-14 77 70)" fill="#15803d" stroke="#4ade80" stroke-width="1.5"/>
+                  <line x1="50" y1="45" x2="104" y2="95" stroke="#ef4444" stroke-width="2.5"/>
+                  <line x1="104" y1="45" x2="50" y2="95" stroke="#ef4444" stroke-width="2.5"/>
+                  <!-- Right side -->
+                  <line x1="158" y1="67" x2="192" y2="67" stroke="#16a34a" stroke-width="2.5"/>
+                  <polygon points="192,62 201,67 192,72" fill="#16a34a"/>
+                  <rect x="206" y="8" width="146" height="119" rx="7" fill="#1e293b"/>
+                  <text x="214" y="23" font-size="8.5" font-weight="700" fill="#4ade80">✓ 2 đoạn stem cùng ID:1</text>
+                  <!-- Upper stem segment -->
+                  <rect x="255" y="34" width="7" height="24" fill="rgba(234,179,8,0.55)" stroke="#2563eb" stroke-width="2"/>
+                  <rect x="266" y="33" width="78" height="14" rx="3" fill="#eab308"/><text x="305" y="43" text-anchor="middle" font-size="7.5" font-weight="700" fill="#1e293b">[ID:1] stem #3</text>
+                  <!-- Occluding leaf -->
+                  <ellipse cx="258" cy="71" rx="36" ry="14" transform="rotate(-14 258 71)" fill="#15803d" stroke="#4ade80" stroke-width="1.5"/>
+                  <!-- Lower stem segment -->
+                  <rect x="255" y="83" width="7" height="27" fill="rgba(234,179,8,0.55)" stroke="#2563eb" stroke-width="2"/>
+                  <rect x="266" y="92" width="78" height="14" rx="3" fill="#eab308"/><text x="305" y="102" text-anchor="middle" font-size="7.5" font-weight="700" fill="#1e293b">[ID:1] stem #4</text>
+                </svg>
+              </div>
+              <div class="guide-card-body">
+                <div class="guide-card-title">
+                  <span><i class="fa-solid fa-scissors" style="color:#d97706;"></i> Cuống bị lá che đứt thành 2 khúc</span>
+                </div>
+                <div class="guide-card-desc">Khi lá vắt ngang che mất đoạn giữa của cuống quả số 1, tách thành 2 polygon rời nhưng đặt chung <code>group_id = 1</code> để thuật toán hiểu là cùng một cuống.</div>
+                <ul class="guide-steps-list">
+                  <li>Vẽ <b>2 polygon <code>stem</code> độc lập</b> (bấm <i>Bỏ chọn</i> nếu đang bật chế độ Đắp thêm) và giữ nguyên <code>Group ID = 1</code>.</li>
+                  <li>Hoặc dùng <b>Cục tẩy (<span class="kbd-tag">E</span>)</b> cắt đứt phần lá che: các mảnh tách ra tự động giữ nguyên <code>group_id</code>.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Group Card 3: Edit inline ID & dashed sibling highlight -->
+            <div class="guide-card">
+              <div class="guide-illus-box">
+                <svg viewBox="0 0 360 135" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="360" height="135" rx="8" fill="#ffffff"/>
+                  <!-- Left: Sidebar list -->
+                  <rect x="8" y="8" width="166" height="119" rx="7" fill="#f8fafc" stroke="#cbd5e1"/>
+                  <text x="16" y="23" font-size="8.5" font-weight="700" fill="#475569">Sửa nhanh ở Current Objects</text>
+                  <rect x="14" y="30" width="154" height="24" rx="5" fill="#f5f3ff" stroke="#7c3aed"/>
+                  <circle cx="24" cy="42" r="4" fill="#ef4444"/><text x="33" y="45" font-size="8.5" font-weight="700" fill="#1e293b">ripe ▾</text>
+                  <rect x="84" y="34" width="26" height="16" rx="4" fill="#dcfce7" stroke="#2563eb"/><text x="97" y="45" text-anchor="middle" font-size="9" font-weight="700" fill="#2563eb">1</text>
+                  <text x="115" y="45" font-size="8" fill="#64748b">POLY #1</text>
+                  <rect x="14" y="59" width="154" height="24" rx="5" fill="#ffffff" stroke="#cbd5e1"/>
+                  <circle cx="24" cy="71" r="4" fill="#a855f7"/><text x="33" y="74" font-size="8.5" font-weight="700" fill="#1e293b">calyx ▾</text>
+                  <rect x="84" y="63" width="26" height="16" rx="4" fill="#dcfce7" stroke="#2563eb"/><text x="97" y="74" text-anchor="middle" font-size="9" font-weight="700" fill="#2563eb">1</text>
+                  <text x="115" y="74" font-size="8" fill="#64748b">POLY #2</text>
+                  <rect x="14" y="88" width="154" height="24" rx="5" fill="#ffffff" stroke="#cbd5e1"/>
+                  <circle cx="24" cy="100" r="4" fill="#eab308"/><text x="33" y="103" font-size="8.5" font-weight="700" fill="#1e293b">stem ▾</text>
+                  <rect x="84" y="92" width="26" height="16" rx="4" fill="#ffffff" stroke="#cbd5e1"/><text x="97" y="103" text-anchor="middle" font-size="8.5" fill="#94a3b8">ID</text>
+                  <text x="115" y="103" font-size="8" fill="#64748b">POLY #3</text>
+                  <!-- Right: Canvas sibling highlight -->
+                  <rect x="182" y="8" width="170" height="119" rx="7" fill="#1e293b"/>
+                  <text x="190" y="23" font-size="8.5" font-weight="700" fill="#c4b5fd">Chọn #1 → Cùng cụm sáng viền</text>
+                  <path d="M 244 50 Q 264 36 284 50 L 271 57 L 264 52 L 254 57 Z" fill="rgba(168,85,247,0.42)" stroke="#2563eb" stroke-width="2.2" stroke-dasharray="5 3"/>
+                  <path d="M 264 54 C 242 54, 234 79, 244 102 C 254 118, 276 118, 286 100 C 294 79, 286 54, 264 54 Z" fill="rgba(239,68,68,0.42)" stroke="#7c3aed" stroke-width="2.5"/>
+                  <rect x="288" y="42" width="58" height="14" rx="3" fill="#2563eb"/><text x="317" y="52" text-anchor="middle" font-size="7.5" font-weight="700" fill="#ffffff">Viền đứt nét</text>
+                  <rect x="288" y="76" width="58" height="14" rx="3" fill="#7c3aed"/><text x="317" y="86" text-anchor="middle" font-size="7.5" font-weight="700" fill="#ffffff">★ Đang chọn</text>
+                </svg>
+              </div>
+              <div class="guide-card-body">
+                <div class="guide-card-title">
+                  <span><i class="fa-solid fa-pen-to-square" style="color:#7c3aed;"></i> Sửa ID từng vùng &amp; Kiểm tra cụm</span>
+                </div>
+                <div class="guide-card-desc">Bổ sung hoặc chỉnh lại Group ID bất kỳ lúc nào mà không cần vẽ lại nhãn.</div>
+                <ul class="guide-steps-list">
+                  <li>Nhập số vào ô <code>ID</code> trên từng dòng trong <b>Current Objects</b> hoặc ô <b>Group ID vùng chọn</b> (xóa trống / bấm <b>×</b> để bỏ ID).</li>
+                  <li>Khi click chọn 1 vùng có ID, mọi vùng khác chung ID tự động hiện <b>viền đứt nét cùng màu</b> trên ảnh để kiểm tra sót/nhầm cụm.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Group Card 4: Export JSON vs YOLO TXT -->
+            <div class="guide-card">
+              <div class="guide-illus-box">
+                <svg viewBox="0 0 360 135" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="360" height="135" rx="8" fill="#ffffff"/>
+                  <!-- JSON Card -->
+                  <rect x="8" y="8" width="166" height="119" rx="7" fill="#0f172a"/>
+                  <rect x="16" y="15" width="76" height="15" rx="4" fill="#2563eb"/>
+                  <text x="54" y="25.5" text-anchor="middle" font-size="8" font-weight="700" fill="#ffffff">anh_01.json</text>
+                  <text x="16" y="42" font-size="7.5" font-family="Consolas, monospace" fill="#94a3b8">"shapes": [{</text>
+                  <text x="22" y="54" font-size="7.5" font-family="Consolas, monospace" fill="#e2e8f0">"label": "ripe",</text>
+                  <text x="22" y="66" font-size="7.5" font-family="Consolas, monospace" fill="#4ade80" font-weight="700">"group_id": 1,</text>
+                  <text x="22" y="78" font-size="7.5" font-family="Consolas, monospace" fill="#cbd5e1">"points": [[420,520]...]</text>
+                  <text x="16" y="90" font-size="7.5" font-family="Consolas, monospace" fill="#94a3b8">}]</text>
+                  <text x="16" y="114" font-size="8" font-weight="700" fill="#93c5fd">Pixel gốc • Giữ group_id</text>
+                  <!-- TXT Card -->
+                  <rect x="186" y="8" width="166" height="119" rx="7" fill="#0f172a"/>
+                  <rect x="194" y="15" width="72" height="15" rx="4" fill="#7c3aed"/>
+                  <text x="230" y="25.5" text-anchor="middle" font-size="8" font-weight="700" fill="#ffffff">anh_01.txt</text>
+                  <text x="194" y="44" font-size="7.3" font-family="Consolas, monospace" fill="#f87171">2 0.420000 0.520000...</text>
+                  <text x="194" y="58" font-size="7.3" font-family="Consolas, monospace" fill="#c084fc">4 0.440000 0.500000...</text>
+                  <text x="194" y="72" font-size="7.3" font-family="Consolas, monospace" fill="#facc15">3 0.495000 0.480000...</text>
+                  <text x="194" y="86" font-size="7.3" font-family="Consolas, monospace" fill="#facc15">3 0.498000 0.350000...</text>
+                  <text x="194" y="114" font-size="8" font-weight="700" fill="#d8b4fe">Chuẩn [0,1] • Bỏ group_id</text>
+                </svg>
+              </div>
+              <div class="guide-card-body">
+                <div class="guide-card-title">
+                  <span><i class="fa-solid fa-file-export" style="color:#16a34a;"></i> Xuất nhãn .json / .txt tùy chọn</span>
+                </div>
+                <div class="guide-card-desc">Bấm <b>Xuất nhãn</b> trên thanh Header để xuất <b>Toàn bộ Project</b> (<code>train/val</code> hoặc thư mục phẳng chung với ảnh) hay tải riêng <b>Chỉ ảnh hiện tại</b> (<code>.json</code> / <code>.txt</code> / <code>.zip</code>).</div>
+                <ul class="guide-steps-list">
+                  <li><code>.json</code> chuẩn Labelme / X-AnyLabeling giữ nguyên <code>group_id</code> để chấm điểm ghép cặp.</li>
+                  <li><code>.txt</code> tự chuẩn hóa <code>[0, 1]</code>, bỏ <code>group_id</code>, và có nút <b>Chuẩn 5 lớp (0:unripe → 4:calyx)</b> để sắp lại mã class.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: Project, GPU & Shortcuts -->
         <div class="guide-tab-panel" id="guideTabWorkflow">
           <div style="font-size:12.5px; font-weight:700; color:#1e293b;">
             <i class="fa-solid fa-folder-tree" style="color:#7c3aed;"></i> Quy trình quản lý Dataset Project (An toàn dữ liệu gốc)
@@ -2540,8 +2749,8 @@
             </div>
             <div class="guide-step-card">
               <div class="guide-step-icon"><i class="fa-solid fa-file-export"></i></div>
-              <div style="font-size:12px; font-weight:700; color:#0f172a;">4. Export &amp; Mở lại</div>
-              <div style="font-size:11px; color:#475569; line-height:1.45;">Bấm <b>Export YOLO</b> để chia sẵn tập <code>train/val</code> + <code>data.yaml</code>, hoặc mở lại project bất cứ lúc nào.</div>
+              <div style="font-size:12px; font-weight:700; color:#0f172a;">4. Xuất nhãn (.txt / .json)</div>
+              <div style="font-size:11px; color:#475569; line-height:1.45;">Bấm <b>Xuất nhãn</b> để xuất file <code>.txt</code> (YOLO), <code>.json</code> (Labelme giữ Group ID) hoặc cả hai cho cả Project / ảnh hiện tại.</div>
             </div>
           </div>
 
@@ -2570,8 +2779,9 @@
               <tr><td><span class="kbd-tag">V</span></td><td>Chọn chế độ <b>Chọn &amp; Kéo đỉnh Polygon</b></td></tr>
               <tr><td><span class="kbd-tag">H</span> hoặc <b>Giữ chuột giữa</b></td><td>Chế độ <b>Bàn tay (Pan)</b> kéo di chuyển ảnh khi đang phóng to</td></tr>
               <tr><td><b>Cuộn con lăn chuột</b></td><td>Phóng to / Thu nhỏ ảnh ngay tại vị trí con trỏ chuột</td></tr>
-              <tr><td><span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span></td><td><b>Hoàn tác (Undo)</b> thao tác vẽ, sửa hoặc xóa gần nhất</td></tr>
+              <tr><td><span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span></td><td><b>Hoàn tác (Undo)</b> thao tác vẽ, sửa, đổi lớp hoặc đổi <code>Group ID</code> gần nhất</td></tr>
               <tr><td><span class="kbd-tag">Enter</span> / <span class="kbd-tag">Backspace</span></td><td>Hoàn tất đa giác thủ công (<span class="kbd-tag">Enter</span>) hoặc lùi lại 1 đỉnh (<span class="kbd-tag">Backspace</span> / <b>Chuột phải</b>)</td></tr>
+              <tr><td><span class="kbd-tag">+1</span> / <span class="kbd-tag">-</span> / <span class="kbd-tag">×</span></td><td>Tăng / giảm / bỏ <b>Group ID mới</b> trước khi vẽ từng cụm quả</td></tr>
               <tr><td><span class="kbd-tag">?</span> hoặc <span class="kbd-tag">F1</span></td><td>Mở nhanh bảng <b>Hướng dẫn sử dụng</b> (<span class="kbd-tag">Esc</span> để đóng)</td></tr>
             </tbody>
           </table>
@@ -5592,6 +5802,7 @@
       overview: { panel: "guideTabOverview", btn: "guideTabBtnOverview" },
       ai_tools: { panel: "guideTabAiTools", btn: "guideTabBtnAiTools" },
       edit_tools: { panel: "guideTabEditTools", btn: "guideTabBtnEditTools" },
+      group_export: { panel: "guideTabGroupExport", btn: "guideTabBtnGroupExport" },
       workflow: { panel: "guideTabWorkflow", btn: "guideTabBtnWorkflow" }
     };
 

@@ -216,7 +216,8 @@
           171
         ]
       ],
-      "type": "polygon"
+      "type": "polygon",
+      "group_id": 3
     },
     {
       "class_name": "stem",
@@ -366,7 +367,8 @@
           0
         ]
       ],
-      "type": "polygon"
+      "type": "polygon",
+      "group_id": 3
     },
     {
       "class_name": "calyx",
@@ -584,11 +586,11 @@
           143
         ]
       ],
-      "type": "polygon"
+      "type": "polygon",
+      "group_id": 3
     },
     {
       "class_name": "unripe",
-      "type": "polygon",
       "polygon": [
         [
           220.9,
@@ -818,11 +820,12 @@
           224.3,
           254.4
         ]
-      ]
+      ],
+      "type": "polygon",
+      "group_id": 2
     },
     {
       "class_name": "calyx",
-      "type": "polygon",
       "polygon": [
         [
           140.2,
@@ -1008,11 +1011,12 @@
           132.8,
           218.5
         ]
-      ]
+      ],
+      "type": "polygon",
+      "group_id": 2
     },
     {
       "class_name": "stem",
-      "type": "polygon",
       "polygon": [
         [
           191,
@@ -1198,11 +1202,12 @@
           190,
           51
         ]
-      ]
+      ],
+      "type": "polygon",
+      "group_id": 2
     },
     {
       "class_name": "stem",
-      "type": "polygon",
       "polygon": [
         [
           86,
@@ -1296,11 +1301,12 @@
           84,
           6
         ]
-      ]
+      ],
+      "type": "polygon",
+      "group_id": 1
     },
     {
       "class_name": "ripe",
-      "type": "polygon",
       "polygon": [
         [
           2,
@@ -1498,11 +1504,12 @@
           9,
           121
         ]
-      ]
+      ],
+      "type": "polygon",
+      "group_id": 1
     },
     {
       "class_name": "calyx",
-      "type": "polygon",
       "polygon": [
         [
           1.4,
@@ -1712,11 +1719,12 @@
           8.2,
           104.7
         ]
-      ]
+      ],
+      "type": "polygon",
+      "group_id": 1
     },
     {
       "class_name": "ripe",
-      "type": "polygon",
       "polygon": [
         [
           431,
@@ -1926,11 +1934,12 @@
           433,
           150
         ]
-      ]
+      ],
+      "type": "polygon",
+      "group_id": 4
     },
     {
       "class_name": "calyx",
-      "type": "polygon",
       "polygon": [
         [
           416,
@@ -2112,11 +2121,12 @@
           417,
           133
         ]
-      ]
+      ],
+      "type": "polygon",
+      "group_id": 4
     },
     {
       "class_name": "stem",
-      "type": "polygon",
       "polygon": [
         [
           549,
@@ -2302,7 +2312,9 @@
           549,
           37
         ]
-      ]
+      ],
+      "type": "polygon",
+      "group_id": 4
     }
   ]
 }
