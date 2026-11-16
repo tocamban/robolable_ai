@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RoboLabel AI - SAM 3 & SAM 2 Auto-Segmentation</title>
+  <title>RoboLabel AI v1.2 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
@@ -2861,7 +2861,7 @@
     }
 
     function setEraserRadius(val) {
-      eraserRadius = Math.max(5, Math.min(100, parseInt(val) || 20));
+      eraserRadius = Math.max(5, Math.min(80, parseInt(val) || 20));
       const slider = document.getElementById("eraserSizeInput");
       if (slider) slider.value = eraserRadius;
       const disp = document.getElementById("eraserRadiusDisplay");
@@ -3072,11 +3072,12 @@
           return i;
         }
       }
+      const vHit = 14 * getZoomInv();
       for (let i = annotations.length - 1; i >= 0; i--) {
         const poly = annotations[i].polygon;
         if (!poly) continue;
         for (let j = 0; j < poly.length; j++) {
-          if (Math.hypot(coords.x - poly[j][0], coords.y - poly[j][1]) < 14) {
+          if (Math.hypot(coords.x - poly[j][0], coords.y - poly[j][1]) < vHit) {
             return i;
           }
         }
@@ -3798,6 +3799,8 @@
           return;
         }
 
+        if (!currentImageName) return;
+
         const coords = getCanvasCoordinates(e);
 
         if (activeTool === "eraser") {
@@ -3865,6 +3868,8 @@
               return;
             }
           }
+          const prevPt = manualPolyPoints[manualPolyPoints.length - 1];
+          if (prevPt && Math.hypot(coords.x - prevPt.x, coords.y - prevPt.y) < 1.5) return;
           manualPolyPoints.push(coords);
           redraw();
           return;
@@ -3907,6 +3912,8 @@
           applyTransform();
           return;
         }
+
+        if (!currentImageName) return;
 
         const coords = getCanvasCoordinates(e);
         dragCurrent = coords;
@@ -4047,6 +4054,11 @@
       });
 
       // Keyboard Shortcuts
+      const isModalVisible = (id) => {
+        const el = document.getElementById(id);
+        return Boolean(el && (el.style.display === "flex" || el.classList.contains("show")));
+      };
+
       window.addEventListener("keydown", (e) => {
         const activeTag = (document.activeElement && document.activeElement.tagName) || "";
         const isTyping = (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT");
@@ -4069,21 +4081,14 @@
         }
 
         if (e.key === "Escape") {
-          const em = document.getElementById("exportModal");
-          if (em && (em.style.display === "flex" || em.classList.contains("show"))) {
-            closeExportModal();
-            return;
-          }
-          const gm = document.getElementById("guideModal");
-          if (gm && (gm.style.display === "flex" || gm.classList.contains("show"))) {
-            closeGuideModal();
-            return;
-          }
-          const dm = document.getElementById("deviceModal");
-          if (dm && (dm.style.display === "flex" || dm.classList.contains("show"))) {
-            closeDeviceModal();
-            return;
-          }
+          if (isModalVisible("exportModal")) { closeExportModal(); return; }
+          if (isModalVisible("guideModal")) { closeGuideModal(); return; }
+          if (isModalVisible("deviceModal")) { closeDeviceModal(); return; }
+          if (isModalVisible("projectModal")) { closeProjectModal(); return; }
+        }
+
+        if (["exportModal", "guideModal", "deviceModal", "projectModal"].some(isModalVisible)) {
+          return;
         }
 
         // Ctrl + Z
@@ -4139,12 +4144,16 @@
     async function callAISegment(payload) {
       showToast("Đang phân tích hình ảnh & chạy AI...");
       try {
-        const { data } = await postJson("/api/segment", {
+        const { res, data } = await postJson("/api/segment", {
           image_name: currentImageName,
           model_id: selectedModel,
           class_name: currentClass,
           ...payload
         });
+        if (!res.ok || data.success === false) {
+          showToast(data.error || "Lỗi khi chạy AI segmentation");
+          return;
+        }
         if (data.polygons && data.polygons.length > 0) {
           pushHistory();
           const assignedClass = data.class_name || currentClass;
@@ -4395,13 +4404,17 @@
       try {
         const res = await fetch("/api/upload", { method: "POST", body: fd });
         const data = await res.json();
-        if (data.success) {
+        if (res.ok && data.success) {
           await loadImages();
           selectImage(data.filename);
           showToast("Tải ảnh thành công!");
+        } else {
+          showToast(data.error || "Tải ảnh thất bại");
         }
       } catch (err) {
         showToast("Lỗi khi tải ảnh");
+      } finally {
+        e.target.value = "";
       }
     }
 
@@ -4620,10 +4633,6 @@
       } finally {
         if (btn) btn.disabled = false;
       }
-    }
-
-    function exportYOLO() {
-      openExportModal();
     }
 
     // =========================================================================

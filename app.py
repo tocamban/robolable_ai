@@ -377,6 +377,8 @@ def upload_image():
     safe_name = os.path.basename(f.filename or "")
     if safe_name == "":
         return jsonify({"error": "Empty filename"}), 400
+    if not is_image_file(safe_name):
+        return jsonify({"error": "Định dạng ảnh không hợp lệ (chỉ hỗ trợ .jpg, .jpeg, .png, .bmp, .webp)"}), 400
     save_path = os.path.join(ctx["images_dir"], safe_name)
     f.save(save_path)
     

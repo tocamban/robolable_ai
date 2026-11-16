@@ -227,6 +227,7 @@ def check_flask_routes(tmp):
 
         # Upload, image fetch, annotation save/load & path traversal check
         assert client.post("/api/upload", data={}).status_code == 400
+        assert client.post("/api/upload", data={"file": (io.BytesIO(b"bad"), "evil.txt")}).status_code == 400
         up = client.post("/api/upload", data={"file": (_img_bytes(), "up_test.jpg")})
         assert up.status_code == 200 and up.get_json()["filename"] == "up_test.jpg"
         img_resp = client.get("/api/image/up_test.jpg")
