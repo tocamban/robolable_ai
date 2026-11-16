@@ -13,6 +13,9 @@ import numpy as np
 import cv2
 from flask import Flask, request, jsonify, send_file, send_from_directory
 from PIL import Image
+from shapely.geometry import Polygon, MultiPolygon, GeometryCollection, LineString
+from shapely.ops import unary_union
+from shapely.validation import make_valid
 from ultralytics import SAM
 
 from device_manager import (
@@ -28,6 +31,7 @@ from project_manager import (
     ProjectManager,
     inspect_dataset_folder,
     is_image_file,
+    sanitize_annotations_list,
 )
 
 app = Flask(__name__, static_folder="static")
@@ -331,6 +335,251 @@ def list_models():
     ]
     return jsonify(models)
 
+OVERLAP_MIN_AREA_PX = 2.0
+
+
+def _get_ann_class(ann):
+    return str(ann.get("class_name") or ann.get("label") or "").strip()
+
+
+def _class_priority(class_name):
+    if class_name == "calyx":
+        return 3
+    if class_name == "stem":
+        return 2
+    return 1
+
+
+def _split_polygon_interiors(poly):
+    """Tách polygon có lỗ rỗng thành các polygon đơn bằng đường cắt ngang tâm lỗ."""
+    if not poly.interiors:
+        return [poly]
+    pending = [poly]
+    finished = []
+    max_iters = 20
+    iters = 0
+    while pending and iters < max_iters:
+        iters += 1
+        cur = pending.pop(0)
+        if cur.is_empty:
+            continue
+        if not cur.interiors:
+            finished.append(cur)
+            continue
+        ring = cur.interiors[0]
+        minx, _, maxx, _ = cur.bounds
+        cy = Polygon(ring).centroid.y
+        cut_band = LineString([(minx - 1.0, cy), (maxx + 1.0, cy)]).buffer(0.01)
+        split_geom = cur.difference(cut_band)
+        parts = []
+        if isinstance(split_geom, Polygon):
+            parts = [split_geom]
+        elif isinstance(split_geom, (MultiPolygon, GeometryCollection)):
+            parts = [g for g in split_geom.geoms if isinstance(g, Polygon)]
+        if not parts:
+            continue
+        if len(parts) == 1 and len(parts[0].interiors) >= len(cur.interiors):
+            finished.append(Polygon(parts[0].exterior))
+        else:
+            pending.extend(parts)
+    for rem in pending:
+        if not rem.is_empty:
+            finished.append(rem if not rem.interiors else Polygon(rem.exterior))
+    return finished
+
+
+def _extract_valid_polygons(geom, min_area=OVERLAP_MIN_AREA_PX):
+    """Chuẩn hóa Geometry thành danh sách Polygon hợp lệ không chứa lỗ rỗng và đủ diện tích."""
+    if geom is None or geom.is_empty:
+        return []
+    if not geom.is_valid:
+        repaired = geom.buffer(0)
+        if repaired.is_empty:
+            repaired = make_valid(geom)
+        geom = repaired
+    if geom is None or geom.is_empty:
+        return []
+
+    raw_polys = []
+    if isinstance(geom, Polygon):
+        raw_polys.append(geom)
+    elif isinstance(geom, (MultiPolygon, GeometryCollection)):
+        for sub in geom.geoms:
+            if isinstance(sub, Polygon):
+                raw_polys.append(sub)
+            elif isinstance(sub, (MultiPolygon, GeometryCollection)):
+                raw_polys.extend(_extract_valid_polygons(sub, min_area=min_area))
+
+    out = []
+    for p in raw_polys:
+        if p.is_empty or p.area <= min_area:
+            continue
+        for simple_p in _split_polygon_interiors(p):
+            if not simple_p.is_empty and simple_p.area > min_area:
+                out.append(simple_p)
+    return out
+
+
+def _ann_to_shapely_polygons(ann, min_area=OVERLAP_MIN_AREA_PX):
+    """Chuyển annotation dict thành danh sách Shapely Polygon hợp lệ."""
+    pts = ann.get("polygon")
+    if (not pts or len(pts) < 3) and ann.get("bbox") and len(ann.get("bbox")) == 4:
+        x1, y1, x2, y2 = [float(v) for v in ann["bbox"]]
+        pts = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
+    if not pts or len(pts) < 3:
+        return []
+    coords = [(float(p[0]), float(p[1])) for p in pts if isinstance(p, (list, tuple)) and len(p) >= 2]
+    if len(coords) < 3:
+        return []
+    return _extract_valid_polygons(Polygon(coords), min_area=min_area)
+
+
+def _shapely_poly_to_coords(poly, decimals=2):
+    """Chuyển Shapely Polygon thành mảng tọa độ [[x, y], ...], loại bỏ điểm trùng liên tiếp."""
+    if poly is None or poly.is_empty:
+        return []
+    raw = list(poly.exterior.coords)[:-1]
+    coords = []
+    for x, y in raw:
+        pt = [round(float(x), decimals), round(float(y), decimals)]
+        if not coords or pt != coords[-1]:
+            coords.append(pt)
+    if len(coords) > 1 and coords[0] == coords[-1]:
+        coords.pop()
+    return coords if len(coords) >= 3 else []
+
+
+def detect_polygon_overlaps(annotations, min_area=OVERLAP_MIN_AREA_PX):
+    """Kiểm tra mọi cặp polygon; chỉ báo trùng khi diện tích giao > min_area (bỏ qua chạm viền)."""
+    if not annotations or len(annotations) < 2:
+        return []
+    parsed = []
+    for ann in annotations:
+        if not isinstance(ann, dict):
+            parsed.append(("", None))
+            continue
+        polys = _ann_to_shapely_polygons(ann, min_area=min_area)
+        geom = (polys[0] if len(polys) == 1 else unary_union(polys)) if polys else None
+        parsed.append((_get_ann_class(ann), geom))
+
+    overlaps = []
+    n = len(parsed)
+    for i in range(n):
+        cls_i, geom_i = parsed[i]
+        if geom_i is None or geom_i.is_empty:
+            continue
+        for j in range(i + 1, n):
+            cls_j, geom_j = parsed[j]
+            if geom_j is None or geom_j.is_empty:
+                continue
+            if not geom_i.intersects(geom_j):
+                continue
+            try:
+                inter_area = float(geom_i.intersection(geom_j).area)
+            except Exception:
+                inter_area = float(geom_i.buffer(0).intersection(geom_j.buffer(0)).area)
+            if inter_area > min_area:
+                key_i = (_class_priority(cls_i), i)
+                key_j = (_class_priority(cls_j), j)
+                if key_i >= key_j:
+                    upper_idx, lower_idx = i, j
+                    upper_cls, lower_cls = cls_i, cls_j
+                else:
+                    upper_idx, lower_idx = j, i
+                    upper_cls, lower_cls = cls_j, cls_i
+                overlaps.append({
+                    "upper_index": upper_idx,
+                    "lower_index": lower_idx,
+                    "upper_class": upper_cls,
+                    "lower_class": lower_cls,
+                    "area": round(inter_area, 1),
+                    "pair_label": f"{upper_cls} đè lên {lower_cls}",
+                })
+    return overlaps
+
+
+def autofix_polygon_overlaps(annotations, min_area=OVERLAP_MIN_AREA_PX):
+    """Cắt phần giao nhau khỏi polygon bị đè theo ưu tiên (calyx > stem > quả > vẽ sau), giữ group_id và label."""
+    if not annotations:
+        return [], 0, 0
+
+    order = sorted(
+        range(len(annotations)),
+        key=lambda i: (_class_priority(_get_ann_class(annotations[i])), i),
+        reverse=True,
+    )
+    higher_geoms = []
+    results_by_idx = {}
+    fixed_count = 0
+    split_count = 0
+
+    for idx in order:
+        ann = annotations[idx]
+        cls_name = _get_ann_class(ann)
+        polys = _ann_to_shapely_polygons(ann, min_area=min_area)
+        if not polys:
+            results_by_idx[idx] = [dict(ann)]
+            continue
+
+        cur_geom = polys[0] if len(polys) == 1 else unary_union(polys)
+        was_cut = False
+        for h_geom in higher_geoms:
+            if cur_geom.is_empty:
+                break
+            if not cur_geom.intersects(h_geom):
+                continue
+            try:
+                inter_area = float(cur_geom.intersection(h_geom).area)
+                if inter_area > min_area:
+                    cur_geom = cur_geom.difference(h_geom)
+                    was_cut = True
+            except Exception:
+                cur_safe = cur_geom.buffer(0)
+                h_safe = h_geom.buffer(0)
+                if float(cur_safe.intersection(h_safe).area) > min_area:
+                    cur_geom = cur_safe.difference(h_safe)
+                    was_cut = True
+
+        if not was_cut:
+            entry = dict(ann)
+            entry["class_name"] = cls_name
+            results_by_idx[idx] = [entry]
+            higher_geoms.append(cur_geom)
+        else:
+            fixed_count += 1
+            pieces = sorted(
+                _extract_valid_polygons(cur_geom, min_area=min_area),
+                key=lambda p: p.area,
+                reverse=True,
+            )
+            piece_dicts = []
+            for piece_poly in pieces:
+                coords = _shapely_poly_to_coords(piece_poly, decimals=2)
+                if len(coords) < 3:
+                    continue
+                rounded_poly = Polygon(coords)
+                if not rounded_poly.is_valid:
+                    rounded_poly = rounded_poly.buffer(0)
+                if rounded_poly.is_empty or rounded_poly.area <= min_area:
+                    continue
+                higher_geoms.append(rounded_poly)
+
+                new_ann = dict(ann)
+                new_ann["class_name"] = cls_name
+                if "label" in ann:
+                    new_ann["label"] = cls_name
+                new_ann["type"] = "polygon"
+                new_ann["polygon"] = coords
+                new_ann.pop("bbox", None)
+                piece_dicts.append(new_ann)
+            if len(piece_dicts) > 1:
+                split_count += len(piece_dicts) - 1
+            results_by_idx[idx] = piece_dicts
+
+    fixed_annotations = [item for i in range(len(annotations)) for item in results_by_idx.get(i, [])]
+    return fixed_annotations, fixed_count, split_count
+
+
 @app.route("/api/images", methods=["GET"])
 def list_images():
     ctx = pm.get_active_context()
@@ -342,6 +591,7 @@ def list_images():
     for f in sorted(files):
         ann_path = os.path.join(ann_dir, f"{f}.json")
         ann_count = 0
+        overlaps = []
         if not os.path.exists(ann_path):
             with open(ann_path, 'w', encoding='utf-8') as af:
                 json.dump({"annotations": []}, af, indent=2)
@@ -349,14 +599,20 @@ def list_images():
             try:
                 with open(ann_path, 'r', encoding='utf-8') as af:
                     ann_data = json.load(af)
-                    ann_count = len(ann_data.get('annotations', []))
+                    anns = ann_data.get('annotations', [])
+                    ann_count = len(anns)
+                    overlaps = detect_polygon_overlaps(anns)
             except Exception:
                 ann_count = 0
+                overlaps = []
         result.append({
             "filename": f,
             "url": f"/api/image/{quote(f)}?p={ctx['id']}",
             "annotations_count": ann_count,
-            "split": splits_map.get(f)
+            "split": splits_map.get(f),
+            "has_overlap": len(overlaps) > 0,
+            "overlap_count": len(overlaps),
+            "overlaps": overlaps,
         })
     return jsonify(result)
 
@@ -669,16 +925,74 @@ def handle_annotations(filename):
     if request.method == "POST":
         data = request.get_json(force=True, silent=True) or {}
         try:
-            res = pm.sync_image_annotations(safe_name, data.get("annotations", []))
-            return jsonify(res)
+            anns = data.get("annotations", [])
+            res = pm.sync_image_annotations(safe_name, anns)
+            sanitized = sanitize_annotations_list(anns if isinstance(anns, list) else [])
+            overlaps = detect_polygon_overlaps(sanitized)
+            return jsonify({
+                **res,
+                "overlaps": overlaps,
+                "has_overlap": len(overlaps) > 0,
+                "overlap_count": len(overlaps),
+            })
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
     else:
         pm.record_last_image(safe_name)
+        ann_data = {"annotations": []}
         if os.path.exists(ann_path):
             with open(ann_path, "r", encoding="utf-8") as f:
-                return jsonify(json.load(f))
-        return jsonify({"annotations": []})
+                ann_data = json.load(f)
+        overlaps = detect_polygon_overlaps(ann_data.get("annotations", []))
+        return jsonify({
+            **ann_data,
+            "overlaps": overlaps,
+            "has_overlap": len(overlaps) > 0,
+            "overlap_count": len(overlaps),
+        })
+
+
+@app.route("/api/autofix_overlaps", methods=["POST"])
+def api_autofix_overlaps():
+    ctx = pm.get_active_context()
+    data = request.get_json(force=True, silent=True) or {}
+    image_name = (data.get("image_name") or "").strip()
+    anns = data.get("annotations")
+
+    safe_name = ""
+    if image_name:
+        safe_name = os.path.basename(image_name)
+        if safe_name != image_name:
+            return jsonify({"success": False, "error": "Invalid filename"}), 400
+
+    if anns is None:
+        if not safe_name:
+            return jsonify({"success": False, "error": "Missing image_name or annotations"}), 400
+        ann_path = os.path.join(ctx["annotations_dir"], f"{safe_name}.json")
+        if os.path.exists(ann_path):
+            with open(ann_path, "r", encoding="utf-8") as f:
+                anns = json.load(f).get("annotations", [])
+        else:
+            anns = []
+
+    try:
+        fixed_anns, fixed_count, split_count = autofix_polygon_overlaps(anns or [])
+        sanitized = sanitize_annotations_list(fixed_anns)
+        if safe_name:
+            pm.sync_image_annotations(safe_name, sanitized)
+        remaining_overlaps = detect_polygon_overlaps(sanitized)
+        return jsonify({
+            "success": True,
+            "annotations": sanitized,
+            "overlaps": remaining_overlaps,
+            "has_overlap": len(remaining_overlaps) > 0,
+            "overlap_count": len(remaining_overlaps),
+            "fixed_count": fixed_count,
+            "split_count": split_count,
+        })
+    except Exception as e:
+        print("[!] Error in autofix_overlaps:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 def _api_action(fn):
     """Wrap JSON API handlers to map ValueError -> 400 and unexpected errors -> 500."""

@@ -8,6 +8,7 @@ import tempfile
 import zipfile
 
 from PIL import Image, ImageDraw
+from shapely.geometry import Polygon as ShapelyPolygon
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
@@ -377,11 +378,133 @@ def check_flask_routes(tmp):
         robolabel_app.pm = orig_pm
 
 
+def check_overlap_detection_and_autofix(tmp):
+    # 1. Touching boundary & <= 2.0 sq px overlap must NOT trigger overlap
+    touching = [
+        {"class_name": "calyx", "type": "polygon", "polygon": [[0, 0], [50, 0], [50, 50], [0, 50]]},
+        {"class_name": "ripe", "type": "polygon", "polygon": [[50, 0], [100, 0], [100, 50], [50, 50]]},
+    ]
+    assert robolabel_app.detect_polygon_overlaps(touching) == []
+
+    tiny_overlap = [
+        {"class_name": "calyx", "type": "polygon", "polygon": [[0, 0], [50, 0], [50, 10], [0, 10]]},
+        {"class_name": "ripe", "type": "polygon", "polygon": [[49.9, 0], [100, 0], [100, 10], [49.9, 10]]},
+    ]
+    assert robolabel_app.detect_polygon_overlaps(tiny_overlap) == []
+
+    # 2. Priority 1: calyx drawn BEFORE ripe still takes precedence over ripe
+    p1_anns = [
+        {"class_name": "calyx", "group_id": 1, "type": "polygon", "polygon": [[10, 10], [50, 10], [50, 40], [10, 40]]},
+        {"class_name": "ripe", "group_id": 1, "type": "polygon", "polygon": [[20, 20], [80, 20], [80, 80], [20, 80]]},
+    ]
+    ov1 = robolabel_app.detect_polygon_overlaps(p1_anns)
+    assert len(ov1) == 1 and ov1[0]["pair_label"] == "calyx đè lên ripe"
+    fixed1, fc1, sc1 = robolabel_app.autofix_polygon_overlaps(p1_anns)
+    assert fc1 == 1 and sc1 == 0 and len(fixed1) == 2
+    assert ShapelyPolygon(fixed1[0]["polygon"]).area == ShapelyPolygon(p1_anns[0]["polygon"]).area
+    assert round(ShapelyPolygon(fixed1[1]["polygon"]).area, 1) == round(3600.0 - 600.0, 1)
+    assert robolabel_app.detect_polygon_overlaps(fixed1) == []
+
+    # 3. Priority 2: stem drawn BEFORE almost_ripe keeps stem 100% and cuts almost_ripe
+    p2_anns = [
+        {"class_name": "stem", "type": "polygon", "polygon": [[30, 0], [40, 0], [40, 30], [30, 30]]},
+        {"class_name": "almost_ripe", "type": "polygon", "polygon": [[20, 20], [60, 20], [60, 70], [20, 70]]},
+    ]
+    ov2 = robolabel_app.detect_polygon_overlaps(p2_anns)
+    assert len(ov2) == 1 and ov2[0]["pair_label"] == "stem đè lên almost_ripe"
+    fixed2, fc2, _ = robolabel_app.autofix_polygon_overlaps(p2_anns)
+    assert fc2 == 1
+    assert ShapelyPolygon(fixed2[0]["polygon"]).area == ShapelyPolygon(p2_anns[0]["polygon"]).area
+    assert round(ShapelyPolygon(fixed2[1]["polygon"]).area, 1) == round(2000.0 - 100.0, 1)
+    assert robolabel_app.detect_polygon_overlaps(fixed2) == []
+
+    # 4. Same priority: later-drawn polygon (index 1) stays intact, earlier-drawn (index 0) is cut
+    same_prio = [
+        {"class_name": "ripe", "type": "polygon", "polygon": [[0, 0], [40, 0], [40, 40], [0, 40]]},
+        {"class_name": "ripe", "type": "polygon", "polygon": [[20, 0], [60, 0], [60, 40], [20, 40]]},
+    ]
+    fixed_same, fc_same, _ = robolabel_app.autofix_polygon_overlaps(same_prio)
+    assert fc_same == 1 and len(fixed_same) == 2
+    assert round(ShapelyPolygon(fixed_same[0]["polygon"]).area, 1) == 800.0
+    assert round(ShapelyPolygon(fixed_same[1]["polygon"]).area, 1) == 1600.0
+    assert robolabel_app.detect_polygon_overlaps(fixed_same) == []
+
+    # 5. MultiPolygon split: calyx cuts stem into 2 independent polygons preserving group_id and label
+    split_anns = [
+        {
+            "class_name": "stem",
+            "label": "stem",
+            "group_id": 7,
+            "type": "polygon",
+            "polygon": [[40, 10], [50, 10], [50, 90], [40, 90]],
+        },
+        {
+            "class_name": "calyx",
+            "label": "calyx",
+            "group_id": 7,
+            "type": "polygon",
+            "polygon": [[20, 40], [70, 40], [70, 60], [20, 60]],
+        },
+    ]
+    fixed_split, fc_split, sc_split = robolabel_app.autofix_polygon_overlaps(split_anns)
+    assert fc_split == 1 and sc_split == 1 and len(fixed_split) == 3
+    stem_pieces = [a for a in fixed_split if a["class_name"] == "stem"]
+    assert len(stem_pieces) == 2
+    assert all(p.get("group_id") == 7 and p.get("label") == "stem" for p in stem_pieces)
+    assert robolabel_app.detect_polygon_overlaps(fixed_split) == []
+
+    # 5b. Completely occluded / sliver polygon must be dropped instead of producing empty/tiny pieces
+    occluded_anns = [
+        {"class_name": "ripe", "type": "polygon", "polygon": [[20, 20], [50, 20], [50, 50], [20, 50]]},
+        {"class_name": "calyx", "type": "polygon", "polygon": [[10, 10], [60, 10], [60, 60], [10, 60]]},
+    ]
+    fixed_occ, fc_occ, sc_occ = robolabel_app.autofix_polygon_overlaps(occluded_anns)
+    assert fc_occ == 1 and sc_occ == 0 and len(fixed_occ) == 1
+    assert fixed_occ[0]["class_name"] == "calyx"
+    assert robolabel_app.detect_polygon_overlaps(fixed_occ) == []
+
+    # 6. Flask API integration: /api/annotations, /api/images, and /api/autofix_overlaps
+    base_dir = os.path.join(tmp, "overlap_api_base")
+    orig_pm = robolabel_app.pm
+    robolabel_app.pm = pm_mod.ProjectManager(base_dir)
+    client = robolabel_app.app.test_client()
+    try:
+        up = client.post("/api/upload", data={"file": (_img_bytes(), "overlap.jpg")})
+        assert up.status_code == 200
+
+        save_resp = client.post("/api/annotations/overlap.jpg", json={"annotations": split_anns})
+        sjson = save_resp.get_json()
+        assert save_resp.status_code == 200
+        assert sjson["has_overlap"] is True and sjson["overlap_count"] == 1
+        assert sjson["overlaps"][0]["pair_label"] == "calyx đè lên stem"
+
+        imgs = client.get("/api/images").get_json()
+        ov_img = next(i for i in imgs if i["filename"] == "overlap.jpg")
+        assert ov_img["has_overlap"] is True and ov_img["overlap_count"] == 1
+
+        fix_resp = client.post("/api/autofix_overlaps", json={"image_name": "overlap.jpg"})
+        fjson = fix_resp.get_json()
+        assert fix_resp.status_code == 200 and fjson["success"] is True
+        assert fjson["has_overlap"] is False and fjson["overlap_count"] == 0
+        assert fjson["fixed_count"] == 1 and fjson["split_count"] == 1
+        assert len(fjson["annotations"]) == 3
+
+        reloaded = client.get("/api/annotations/overlap.jpg").get_json()
+        assert reloaded["has_overlap"] is False and len(reloaded["annotations"]) == 3
+
+        imgs_after = client.get("/api/images").get_json()
+        ov_img_after = next(i for i in imgs_after if i["filename"] == "overlap.jpg")
+        assert ov_img_after["has_overlap"] is False and ov_img_after["overlap_count"] == 0
+    finally:
+        robolabel_app.pm = orig_pm
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         check_device_manager(tmp)
         check_project_manager(tmp)
         check_flask_routes(tmp)
+        check_overlap_detection_and_autofix(tmp)
     print("[PASS] All RoboLabel AI self-checks passed.")
 
 

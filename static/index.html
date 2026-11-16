@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RoboLabel AI v1.2 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
+  <title>RoboLabel AI v1.3 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
@@ -403,13 +403,117 @@
       border: 2px solid var(--primary);
     }
 
+    .thumb-item.has-overlap:not(.active) img {
+      border-color: #f97316;
+      box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.35);
+    }
+
     .thumb-name {
       font-size: 9.5px;
       color: #64748b;
       margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .thumb-name-text {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .thumb-overlap-dot {
+      color: #ea580c;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .canvas-top-overlays {
+      position: absolute;
+      top: 12px;
+      left: 16px;
+      right: 72px;
+      z-index: 15;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .canvas-top-overlays > * {
+      pointer-events: auto;
+    }
+
+    .overlap-alert-banner {
+      align-self: flex-start;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #fff7ed 0%, #fef2f2 100%);
+      border: 1.5px solid #f97316;
+      border-left: 4px solid #dc2626;
+      color: #9a3412;
+      padding: 7px 12px;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(220, 38, 38, 0.18);
+      font-size: 12px;
+      max-width: min(580px, 100%);
+    }
+
+    .ann-item.has-overlap {
+      background: #fff7ed;
+      border-color: #fdba74;
+    }
+
+    .ann-item.selected.has-overlap {
+      background: #fef2f2;
+      border-color: #ea580c;
+    }
+
+    .ann-overlap-tag {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #ffedd5;
+      color: #c2410c;
+      border: 1px solid #fdba74;
+      flex-shrink: 0;
+    }
+
+    .btn-autofix-overlap {
+      background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+      color: #ffffff;
+      border: none;
+      padding: 5px 11px;
+      border-radius: 7px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+      transition: filter 0.15s;
+    }
+
+    .btn-autofix-overlap:hover:not(:disabled) {
+      filter: brightness(1.06);
+    }
+
+    .btn-autofix-overlap:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
     }
 
     .thumb-badge {
@@ -1458,7 +1562,7 @@
       </div>
     </div>
     <div class="top-right">
-      <span class="app-version-pill" id="appVersionBadge" title="RoboLabel AI v1.2 • Hỗ trợ cập nhật 1-click qua update.bat">v1.2</span>
+      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.3 • Nhấn để xem điểm mới bản cập nhật">v1.3</span>
       <button type="button" class="btn-guide-header" id="btnOpenGuide" onclick="openGuideModal('overview')" title="Xem hướng dẫn sử dụng giao diện & công cụ (Phím ? hoặc F1)">
         <i class="fa-solid fa-book-open"></i> Hướng dẫn
       </button>
@@ -1565,38 +1669,51 @@
 
     <!-- Center Canvas Workspace -->
     <div class="canvas-container" id="canvasContainer">
-      <!-- Eraser Control Bar -->
-      <div id="eraserControlBar" style="display:none; position:absolute; top:12px; left:50%; transform:translateX(-50%); background:#ffffff; border:1px solid #cbd5e1; color:#1e293b; padding:6px 14px; border-radius:30px; font-size:12px; z-index:10; box-shadow:0 4px 18px rgba(0,0,0,0.14); align-items:center; gap:10px;">
-        <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:#ef4444;">
-          <i class="fa-solid fa-eraser"></i>
-          <span>Cục Tẩy</span>
+      <div class="canvas-top-overlays">
+        <!-- Overlap Warning Alert Banner -->
+        <div id="overlapAlertBanner" class="overlap-alert-banner" role="alert">
+          <i class="fa-solid fa-triangle-exclamation" style="color:#dc2626; font-size:15px; flex-shrink:0;"></i>
+          <span id="overlapAlertText" style="font-weight:600; line-height:1.35; overflow:hidden; text-overflow:ellipsis;">
+            Phát hiện 1 vùng trùng: calyx đè lên ripe
+          </span>
+          <button type="button" id="btnAutoFixOverlap" class="btn-autofix-overlap" onclick="autoFixOverlaps()" title="Tự động cắt trừ phần giao nhau theo thứ tự ưu tiên (calyx > stem > quả)">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Tự sửa
+          </button>
         </div>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span style="font-size:11px; color:#64748b;">Cỡ:</span>
-          <input type="range" id="eraserSizeInput" min="5" max="80" value="20" oninput="setEraserRadius(this.value)" style="width:85px; cursor:pointer;">
-          <span id="eraserRadiusDisplay" style="font-weight:700; font-size:11px; width:32px; text-align:right;">20px</span>
-        </div>
-        <div style="display:flex; gap:3px;">
-          <button type="button" class="pill-btn" onclick="setEraserRadius(10)">10px</button>
-          <button type="button" class="pill-btn" onclick="setEraserRadius(20)">20px</button>
-          <button type="button" class="pill-btn" onclick="setEraserRadius(35)">35px</button>
-          <button type="button" class="pill-btn" onclick="setEraserRadius(50)">50px</button>
-        </div>
-        <div id="eraserTargetIndicator" style="font-size:11px; color:#64748b; border-left:1px solid #e2e8f0; padding-left:10px;">
-          <span style="color:#f59e0b;">(Click chọn 1 object để tẩy)</span>
-        </div>
-      </div>
 
-      <!-- Manual Polygon Hint Bar -->
-      <div id="manualPolyHint" style="display:none; position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(15,23,42,0.92); color:#ffffff; padding:6px 16px; border-radius:24px; font-size:11.5px; z-index:10; box-shadow:0 3px 14px rgba(0,0,0,0.22); align-items:center; gap:10px;">
-        <i class="fa-solid fa-draw-polygon" style="color:#a855f7;"></i>
-        <span id="manualPolyStatusText"><b>Vẽ Polygon Thủ Công:</b> Click đặt đỉnh • Snap điểm đầu/Enter/Double-click để đóng • Esc: Hủy</span>
-        <span id="manualPolyAppendBadge" style="display:none; background:#7c3aed; color:#fff; padding:2px 8px; border-radius:10px; font-weight:700; font-size:10.5px;">
-          Đắp thêm vào Object đang chọn
-        </span>
-        <button id="btnDeselectForNewPoly" type="button" onclick="deselectAnnotation()" style="display:none; background:#334155; color:#cbd5e1; border:none; padding:3px 8px; border-radius:10px; cursor:pointer; font-size:10.5px;">
-          Bỏ chọn để tạo Object mới
-        </button>
+        <!-- Eraser Control Bar -->
+        <div id="eraserControlBar" style="display:none; background:#ffffff; border:1px solid #cbd5e1; color:#1e293b; padding:6px 14px; border-radius:30px; font-size:12px; box-shadow:0 4px 18px rgba(0,0,0,0.14); align-items:center; gap:10px; max-width:100%; flex-wrap:wrap; justify-content:center;">
+          <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:#ef4444;">
+            <i class="fa-solid fa-eraser"></i>
+            <span>Cục Tẩy</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:11px; color:#64748b;">Cỡ:</span>
+            <input type="range" id="eraserSizeInput" min="5" max="80" value="20" oninput="setEraserRadius(this.value)" style="width:85px; cursor:pointer;">
+            <span id="eraserRadiusDisplay" style="font-weight:700; font-size:11px; width:32px; text-align:right;">20px</span>
+          </div>
+          <div style="display:flex; gap:3px;">
+            <button type="button" class="pill-btn" onclick="setEraserRadius(10)">10px</button>
+            <button type="button" class="pill-btn" onclick="setEraserRadius(20)">20px</button>
+            <button type="button" class="pill-btn" onclick="setEraserRadius(35)">35px</button>
+            <button type="button" class="pill-btn" onclick="setEraserRadius(50)">50px</button>
+          </div>
+          <div id="eraserTargetIndicator" style="font-size:11px; color:#64748b; border-left:1px solid #e2e8f0; padding-left:10px;">
+            <span style="color:#f59e0b;">(Click chọn 1 object để tẩy)</span>
+          </div>
+        </div>
+
+        <!-- Manual Polygon Hint Bar -->
+        <div id="manualPolyHint" style="display:none; background:rgba(15,23,42,0.92); color:#ffffff; padding:6px 16px; border-radius:24px; font-size:11.5px; box-shadow:0 3px 14px rgba(0,0,0,0.22); align-items:center; gap:10px; max-width:100%; flex-wrap:wrap; justify-content:center;">
+          <i class="fa-solid fa-draw-polygon" style="color:#a855f7;"></i>
+          <span id="manualPolyStatusText"><b>Vẽ Polygon Thủ Công:</b> Click đặt đỉnh • Snap điểm đầu/Enter/Double-click để đóng • Esc: Hủy</span>
+          <span id="manualPolyAppendBadge" style="display:none; background:#7c3aed; color:#fff; padding:2px 8px; border-radius:10px; font-weight:700; font-size:10.5px;">
+            Đắp thêm vào Object đang chọn
+          </span>
+          <button id="btnDeselectForNewPoly" type="button" onclick="deselectAnnotation()" style="display:none; background:#334155; color:#cbd5e1; border:none; padding:3px 8px; border-radius:10px; cursor:pointer; font-size:10.5px;">
+            Bỏ chọn để tạo Object mới
+          </button>
+        </div>
       </div>
 
       <canvas id="annotationCanvas"></canvas>
@@ -2034,7 +2151,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-book-open"></i>
           <span>Hướng dẫn sử dụng giao diện RoboLabel AI</span>
-          <span class="app-version-pill">v1.2</span>
+          <span class="app-version-pill">v1.3</span>
         </div>
         <button class="modal-close" onclick="closeGuideModal()" aria-label="Đóng hướng dẫn">&times;</button>
       </div>
@@ -2048,7 +2165,7 @@
             <i class="fa-solid fa-wand-magic-sparkles"></i> Công cụ AI
           </button>
           <button type="button" class="modal-tab" id="guideTabBtnEditTools" onclick="switchGuideTab('edit_tools')">
-            <i class="fa-solid fa-pen-ruler"></i> Tinh chỉnh Polygon
+            <i class="fa-solid fa-pen-ruler"></i> Tinh chỉnh &amp; Tự sửa Trùng
           </button>
           <button type="button" class="modal-tab" id="guideTabBtnGroupExport" onclick="switchGuideTab('group_export')">
             <i class="fa-solid fa-link"></i> Group ID &amp; Xuất nhãn
@@ -2093,7 +2210,7 @@
               <rect x="328" y="13" width="82" height="24" rx="12" fill="#dcfce7"/>
               <text x="369" y="29" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">Đã lưu tự động</text>
               <rect x="480" y="15" width="38" height="20" rx="10" fill="#dcfce7" stroke="#86efac"/>
-              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.2</text>
+              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.3</text>
               <rect x="524" y="13" width="66" height="24" rx="12" fill="#eef2ff" stroke="#c7d2fe"/>
               <text x="557" y="29" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338ca">Hướng dẫn</text>
               <rect x="596" y="13" width="92" height="24" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
@@ -2222,7 +2339,7 @@
               </div>
               <div class="guide-legend-item">
                 <span class="guide-num-badge">3</span>
-                <div><b>Khung Canvas trung tâm:</b> Nơi hiển thị ảnh và vẽ nhãn. Lăn chuột để Zoom vào vùng chi tiết, giữ chuột giữa để kéo di chuyển ảnh.</div>
+                <div><b>Khung Canvas trung tâm:</b> Nơi hiển thị ảnh và vẽ nhãn. Khi có polygon vẽ đè (<code>&gt; 2 px²</code>), khung cảnh báo cam/đỏ kèm nút <b>Tự sửa</b> tự động hiện ở góc trên.</div>
               </div>
               <div class="guide-legend-item">
                 <span class="guide-num-badge">4</span>
@@ -2230,7 +2347,7 @@
               </div>
               <div class="guide-legend-item">
                 <span class="guide-num-badge">5</span>
-                <div><b>Danh sách Images:</b> Chuyển nhanh giữa các ảnh trong thư mục / project. Huy hiệu tròn màu xanh hiện số đối tượng đã gán nhãn trên từng ảnh.</div>
+                <div><b>Danh sách Images:</b> Chuyển nhanh giữa các ảnh trong project. Huy hiệu xanh hiện số nhãn, biểu tượng cảnh báo cam cạnh tên ảnh báo hiệu ảnh đang có polygon bị trùng.</div>
               </div>
               <div class="guide-legend-item">
                 <span class="guide-num-badge">6</span>
@@ -2401,16 +2518,91 @@
           </div>
         </div>
 
-        <!-- TAB 3: Polygon Refinement Tools -->
+        <!-- TAB 3: Polygon Refinement & Auto-Fix Overlap Tools -->
         <div class="guide-tab-panel" id="guideTabEditTools">
           <div class="guide-intro-banner">
             <i class="fa-solid fa-pen-ruler" style="font-size:18px; color:#6d28d9; flex-shrink:0;"></i>
             <div>
-              Khi AI vẽ hơi lem vào cuống/nền hoặc bị khuyết một góc, bạn <b>không cần vẽ lại từ đầu</b>: chỉ cần chọn đối tượng đó rồi dùng <b>Cục Tẩy</b>, <b>Đắp thêm</b> hoặc <b>Kéo đỉnh</b>.
+              Khi các vùng nhãn bị vẽ đè lên nhau, hãy bấm <b>Tự sửa</b> trên thanh cảnh báo góc trên để cắt tỉa tự động bằng Shapely; hoặc chọn từng đối tượng để chỉnh tay bằng <b>Cục Tẩy</b>, <b>Đắp thêm</b> và <b>Kéo đỉnh</b>.
             </div>
           </div>
 
           <div class="guide-card-grid">
+            <!-- Edit Card 0a: Auto-Fix Overlap Detection & Boolean Difference -->
+            <div class="guide-card">
+              <div class="guide-illus-box">
+                <svg viewBox="0 0 360 135" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="360" height="135" rx="8" fill="#ffffff"/>
+                  <!-- Before -->
+                  <rect x="8" y="8" width="142" height="119" rx="7" fill="#1e293b"/>
+                  <rect x="14" y="13" width="130" height="16" rx="4" fill="#fff7ed" stroke="#f97316"/>
+                  <text x="19" y="23.5" font-size="7.5" font-weight="700" fill="#c2410c">⚠ calyx đè lên ripe</text>
+                  <rect x="114" y="15.5" width="27" height="11" rx="3" fill="#dc2626"/>
+                  <text x="127.5" y="23.5" text-anchor="middle" font-size="6.8" font-weight="700" fill="#ffffff">Tự sửa</text>
+                  <path d="M 78 52 C 56 52, 48 76, 58 100 C 68 118, 92 118, 102 98 C 110 74, 100 52, 78 52 Z" fill="rgba(239,68,68,0.38)" stroke="#ef4444" stroke-width="2"/>
+                  <path d="M 56 52 Q 78 36 100 52 L 88 64 L 78 58 L 66 64 Z" fill="rgba(168,85,247,0.48)" stroke="#a855f7" stroke-width="2"/>
+                  <!-- Arrow -->
+                  <line x1="157" y1="67" x2="196" y2="67" stroke="#ea580c" stroke-width="2.5"/>
+                  <polygon points="196,62 205,67 196,72" fill="#ea580c"/>
+                  <text x="180" y="57" text-anchor="middle" font-size="8" font-weight="700" fill="#c2410c">Cắt trừ</text>
+                  <!-- After -->
+                  <rect x="210" y="8" width="142" height="119" rx="7" fill="#1e293b"/>
+                  <text x="218" y="23" font-size="8.5" font-weight="700" fill="#4ade80">✓ Chạm viền, không đè</text>
+                  <path d="M 281 58 L 291 64 L 303 52 C 309 66, 311 84, 305 98 C 295 118, 271 118, 261 100 C 254 84, 255 64, 261 52 L 269 64 Z" fill="rgba(239,68,68,0.35)" stroke="#ef4444" stroke-width="2"/>
+                  <path d="M 259 52 Q 281 36 303 52 L 291 64 L 281 58 L 269 64 Z" fill="rgba(168,85,247,0.52)" stroke="#a855f7" stroke-width="2"/>
+                </svg>
+              </div>
+              <div class="guide-card-body">
+                <div class="guide-card-title">
+                  <span><i class="fa-solid fa-wand-magic-sparkles" style="color:#ea580c;"></i> Phát hiện trùng &amp; Nút "Tự sửa"</span>
+                </div>
+                <div class="guide-card-desc">Chỉ báo lỗi khi diện tích giao <code>&gt; 2 px²</code> (cho phép chạm viền). Bấm <b>Tự sửa</b> để cắt trừ đa giác (Boolean Difference) theo thứ tự ưu tiên giữ hình dạng:</div>
+                <ul class="guide-steps-list">
+                  <li><b>Ưu tiên 1:</b> <code>calyx</code> giữ nguyên 100%, cắt phần bị đè trên quả &amp; <code>stem</code>.</li>
+                  <li><b>Ưu tiên 2:</b> <code>stem</code> giữ nguyên, cắt phần bị đè trên thân quả (<code>ripe</code>, <code>almost_ripe</code>, <code>unripe</code>).</li>
+                  <li><b>Cùng cấp ưu tiên:</b> Giữ nguyên polygon vẽ sau (lớp trên), cắt phần che ở polygon vẽ trước.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Edit Card 0b: MultiPolygon Split Preserving Group ID & Label -->
+            <div class="guide-card">
+              <div class="guide-illus-box">
+                <svg viewBox="0 0 360 135" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="360" height="135" rx="8" fill="#ffffff"/>
+                  <!-- Before -->
+                  <rect x="8" y="8" width="142" height="119" rx="7" fill="#1e293b"/>
+                  <text x="16" y="23" font-size="8.5" font-weight="700" fill="#fca5a5">1. Đài hoa đè ngang cuống</text>
+                  <rect x="74" y="34" width="9" height="80" fill="rgba(234,179,8,0.45)" stroke="#eab308" stroke-width="2"/>
+                  <rect x="44" y="64" width="68" height="20" rx="4" fill="rgba(168,85,247,0.55)" stroke="#a855f7" stroke-width="2"/>
+                  <text x="78" y="77" text-anchor="middle" font-size="8" font-weight="700" fill="#ffffff">calyx</text>
+                  <!-- Arrow -->
+                  <line x1="157" y1="67" x2="196" y2="67" stroke="#16a34a" stroke-width="2.5"/>
+                  <polygon points="196,62 205,67 196,72" fill="#16a34a"/>
+                  <text x="180" y="57" text-anchor="middle" font-size="7.8" font-weight="700" fill="#15803d">Tách 2 mảnh</text>
+                  <!-- After -->
+                  <rect x="210" y="8" width="142" height="119" rx="7" fill="#1e293b"/>
+                  <text x="218" y="23" font-size="8.5" font-weight="700" fill="#4ade80">2. Giữ nguyên Group ID &amp; Label</text>
+                  <rect x="242" y="34" width="9" height="30" fill="rgba(234,179,8,0.5)" stroke="#2563eb" stroke-width="2"/>
+                  <rect x="256" y="38" width="84" height="14" rx="3" fill="#eab308"/><text x="298" y="48" text-anchor="middle" font-size="7.5" font-weight="700" fill="#1e293b">[ID:1] stem #1</text>
+                  <rect x="220" y="64" width="54" height="20" rx="4" fill="rgba(168,85,247,0.55)" stroke="#a855f7" stroke-width="2"/>
+                  <text x="247" y="77" text-anchor="middle" font-size="8" font-weight="700" fill="#ffffff">calyx</text>
+                  <rect x="242" y="84" width="9" height="30" fill="rgba(234,179,8,0.5)" stroke="#2563eb" stroke-width="2"/>
+                  <rect x="256" y="92" width="84" height="14" rx="3" fill="#eab308"/><text x="298" y="102" text-anchor="middle" font-size="7.5" font-weight="700" fill="#1e293b">[ID:1] stem #2</text>
+                </svg>
+              </div>
+              <div class="guide-card-body">
+                <div class="guide-card-title">
+                  <span><i class="fa-solid fa-object-ungroup" style="color:#16a34a;"></i> Tách mảnh rời giữ Group ID &amp; Auto-Save</span>
+                </div>
+                <div class="guide-card-desc">Nếu phép cắt trừ tách một polygon thành 2 mảnh rời nhau (ví dụ đài hoa cắt đôi cuống), hệ thống xử lý an toàn và tự lưu ngay:</div>
+                <ul class="guide-steps-list">
+                  <li>Lưu thành <b>2 polygon độc lập</b> nhưng bắt buộc giữ nguyên <code>group_id</code> và <code>label</code> gốc.</li>
+                  <li>Tự cập nhật Canvas, lưu file <code>.json</code> / <code>.txt</code>, ẩn khung cảnh báo và tắt icon ở sidebar.</li>
+                </ul>
+              </div>
+            </div>
+
             <!-- Edit Card 1: Eraser -->
             <div class="guide-card">
               <div class="guide-illus-box">
@@ -2801,6 +2993,67 @@
     </div>
   </div>
 
+  <!-- Modal: Release Notes (Auto-shown once per new version update) -->
+  <div class="modal-overlay" id="releaseNotesModal" onclick="if (event.target === this) closeReleaseNotesModal()">
+    <div class="modal-card" style="width:560px; max-width:94vw;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-rocket" style="color:var(--primary);"></i>
+          <span>Điểm mới trên bản cập nhật RoboLabel AI</span>
+          <span class="app-version-pill">v1.3</span>
+        </div>
+        <button class="modal-close" onclick="closeReleaseNotesModal()" aria-label="Đóng thông báo cập nhật">&times;</button>
+      </div>
+
+      <div class="modal-body" style="gap:12px;">
+        <div class="guide-intro-banner" style="padding:10px 12px;">
+          <i class="fa-solid fa-circle-info" style="font-size:17px; color:#6d28d9; flex-shrink:0;"></i>
+          <div>
+            Chào mừng bạn đến với <b>RoboLabel AI v1.3</b>! Bản cập nhật này bổ sung kiểm tra và tự động xử lý lỗi vẽ đè (chồng lấn) giữa các polygon giúp dữ liệu phân đoạn sạch chuẩn hơn.
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:9px; font-size:12px; color:#334155; line-height:1.5;">
+          <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#c2410c; margin-bottom:3px;">
+              <i class="fa-solid fa-triangle-exclamation"></i> 1. Tự động phát hiện polygon vẽ đè (&gt; 2 px²)
+            </div>
+            <div>
+              Khi mở ảnh hoặc ngay sau khi vẽ/sửa xong, hệ thống tự kiểm tra các cặp nhãn (cho phép chạm sát biên, bỏ qua sai số &le; 2 px²), hiện khung cảnh báo ở góc trên Canvas, gắn icon cảnh báo cạnh tên ảnh ở thanh bên và đánh dấu dòng bị trùng trong <i>Current Objects</i>.
+            </div>
+          </div>
+
+          <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#6d28d9; margin-bottom:3px;">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 2. Nút "Tự sửa" (Shapely Boolean Difference) theo thứ tự ưu tiên
+            </div>
+            <div>
+              Bấm <b>Tự sửa</b> để cắt bỏ phần giao nhau khỏi đối tượng bị đè theo ưu tiên: <b>1.</b> <code>calyx</code> &rarr; <b>2.</b> <code>stem</code> &rarr; <b>3.</b> thân quả (<code>ripe</code>, <code>almost_ripe</code>, <code>unripe</code>). Hai nhãn cùng cấp ưu tiên sẽ giữ nguyên polygon vẽ sau và cắt polygon vẽ trước.
+            </div>
+          </div>
+
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#15803d; margin-bottom:3px;">
+              <i class="fa-solid fa-object-ungroup"></i> 3. Tách mảnh rời (MultiPolygon) giữ nguyên Group ID &amp; Label
+            </div>
+            <div>
+              Nếu phép cắt làm một polygon tách thành nhiều mảnh rời nhau (vd: đài hoa cắt ngang cuống), mỗi mảnh được lưu thành polygon độc lập nhưng giữ nguyên <code>group_id</code> và <code>label</code> gốc, đồng thời tự lưu ngay xuống file JSON.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeReleaseNotesModal(); openGuideModal('edit_tools');">
+          <i class="fa-solid fa-book-open"></i> Xem hướng dẫn chi tiết
+        </button>
+        <button type="button" class="btn-find-submit" onclick="closeReleaseNotesModal()">
+          <i class="fa-solid fa-check"></i> Đã hiểu &amp; Bắt đầu
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Message -->
   <div class="toast" id="toastMsg">
     <i class="fa-solid fa-circle-check" style="color:#4ade80;"></i>
@@ -2808,6 +3061,9 @@
   </div>
 
   <script>
+    const APP_VERSION = "v1.3";
+    const SEEN_VERSION_KEY = "robolabel_seen_version";
+
     // State
     let CLASSES = [
       { name: "almost_ripe", color: "#f97316" }, // Orange
@@ -2822,6 +3078,8 @@
     let currentImageName = "";
     let images = [];
     let annotations = []; // [{ id, class_name, group_id, polygon: [[x, y], ...], bbox }]
+    let currentOverlaps = [];
+    let isAutoFixingOverlap = false;
     let selectedAnnotationIndex = null; // Index của object đang chọn để sửa / tẩy / đắp
     let selectedModel = "sam2_tiny";
     let activeTool = "smart_poly"; // 'smart_poly', 'lasso', 'poly_manual', 'eraser', 'select', 'point_ai', 'bbox', 'pan'
@@ -3246,6 +3504,12 @@
       setupCanvasEvents();
       setupProjectDragAndDrop();
 
+      try {
+        if (localStorage.getItem(SEEN_VERSION_KEY) !== APP_VERSION) {
+          openReleaseNotesModal();
+        }
+      } catch (_) {}
+
       window.addEventListener("beforeunload", () => {
         if (queuedSavePayload && navigator.sendBeacon) {
           const url = `/api/annotations/${encodeURIComponent(queuedSavePayload.imageName)}`;
@@ -3418,25 +3682,146 @@
       const el = document.getElementById("imageList");
       el.innerHTML = "";
       images.forEach(img => {
+        const hasOverlap = Boolean(img.has_overlap);
         const d = document.createElement("div");
-        d.className = `thumb-item ${img.filename === currentImageName ? 'active' : ''}`;
+        d.className = `thumb-item ${img.filename === currentImageName ? 'active' : ''} ${hasOverlap ? 'has-overlap' : ''}`.trim();
         d.onclick = () => selectImage(img.filename);
         const safeUrl = img.url || `/api/image/${encodeURIComponent(img.filename)}?p=${encodeURIComponent(activeProjectId)}`;
         const splitBadge = img.split
           ? `<span style="position:absolute; top:12px; left:12px; background:rgba(15,23,42,0.72); color:#fff; font-size:8.5px; padding:1px 4px; border-radius:4px; text-transform:uppercase;">${escapeHtml(img.split)}</span>`
           : "";
+        const overlapIcon = hasOverlap
+          ? `<i class="fa-solid fa-circle-exclamation thumb-overlap-dot" title="Cảnh báo: ${img.overlap_count || 1} vùng trùng nhãn"></i>`
+          : "";
         d.innerHTML = `
           <img src="${safeUrl}" alt="${escapeHtml(img.filename)}">
           ${splitBadge}
-          <div class="thumb-name" title="${escapeHtml(img.filename)}">${escapeHtml(img.filename)}</div>
+          <div class="thumb-name" title="${escapeHtml(img.filename)}">${overlapIcon}<span class="thumb-name-text">${escapeHtml(img.filename)}</span></div>
           ${img.annotations_count > 0 ? `<div class="thumb-badge">${img.annotations_count}</div>` : ''}
         `;
         el.appendChild(d);
       });
     }
 
+    function updateOverlapAlertUI() {
+      const banner = document.getElementById("overlapAlertBanner");
+      const textEl = document.getElementById("overlapAlertText");
+      const activeOverlaps = (currentImageName && Array.isArray(currentOverlaps)) ? currentOverlaps : [];
+
+      if (banner && textEl) {
+        if (activeOverlaps.length === 0) {
+          banner.style.display = "none";
+          banner.title = "";
+        } else {
+          const pairs = activeOverlaps.map(o => o.pair_label || `${o.upper_class} đè lên ${o.lower_class}`);
+          const detailLines = activeOverlaps.map(o => {
+            const uIdx = Number.isInteger(o.upper_index) ? ` #${o.upper_index + 1}` : "";
+            const lIdx = Number.isInteger(o.lower_index) ? ` #${o.lower_index + 1}` : "";
+            const areaTxt = (o.area !== undefined) ? ` (${o.area} px²)` : "";
+            return `${o.upper_class}${uIdx} đè lên ${o.lower_class}${lIdx}${areaTxt}`;
+          });
+          const shown = pairs.slice(0, 3);
+          const extra = pairs.length - shown.length;
+          const summary = shown.join(", ") + (extra > 0 ? ` (+${extra} cặp khác)` : "");
+          textEl.innerText = `Phát hiện ${activeOverlaps.length} vùng trùng: ${summary}`;
+          banner.title = detailLines.join("\n");
+          banner.style.display = "flex";
+        }
+      }
+
+      const overlapNotesByIdx = new Map();
+      activeOverlaps.forEach(o => {
+        if (Number.isInteger(o.upper_index)) {
+          if (!overlapNotesByIdx.has(o.upper_index)) overlapNotesByIdx.set(o.upper_index, []);
+          overlapNotesByIdx.get(o.upper_index).push(`Đè lên ${o.lower_class} #${o.lower_index + 1} (${o.area} px²)`);
+        }
+        if (Number.isInteger(o.lower_index)) {
+          if (!overlapNotesByIdx.has(o.lower_index)) overlapNotesByIdx.set(o.lower_index, []);
+          overlapNotesByIdx.get(o.lower_index).push(`Bị ${o.upper_class} #${o.upper_index + 1} đè (${o.area} px²)`);
+        }
+      });
+
+      document.querySelectorAll("#annotationList .ann-item[data-ann-idx]").forEach(row => {
+        const idx = parseInt(row.dataset.annIdx, 10);
+        const notes = overlapNotesByIdx.get(idx);
+        const tagEl = row.querySelector(".ann-overlap-tag");
+        if (notes && notes.length > 0) {
+          row.classList.add("has-overlap");
+          if (tagEl) {
+            tagEl.style.display = "inline-flex";
+            tagEl.title = notes.join("\n");
+          }
+        } else {
+          row.classList.remove("has-overlap");
+          if (tagEl) {
+            tagEl.style.display = "none";
+            tagEl.title = "";
+          }
+        }
+      });
+    }
+
+    async function autoFixOverlaps() {
+      if (!currentImageName || isAutoFixingOverlap || !annotations.length) return;
+      isAutoFixingOverlap = true;
+      const btn = document.getElementById("btnAutoFixOverlap");
+      if (btn) btn.disabled = true;
+
+      const prevSnapshot = JSON.parse(JSON.stringify(annotations));
+      try {
+        await flushPendingSave();
+        const { res, data } = await postJson("/api/autofix_overlaps", {
+          image_name: currentImageName,
+          annotations
+        });
+        if (!res.ok || data.success === false) {
+          showToast(data.error || "Lỗi khi tự sửa vùng trùng");
+          return;
+        }
+
+        historyStack.push(prevSnapshot);
+        if (historyStack.length > 30) historyStack.shift();
+        annotations = data.annotations || [];
+        currentOverlaps = data.overlaps || [];
+        selectedAnnotationIndex = null;
+
+        const cur = images.find(i => i.filename === currentImageName);
+        if (cur) {
+          cur.annotations_count = annotations.length;
+          cur.has_overlap = Boolean(data.has_overlap);
+          cur.overlap_count = data.overlap_count || 0;
+        }
+
+        updateAnnotationUI();
+        updateOverlapAlertUI();
+        renderThumbnails();
+        redraw();
+
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
+        setAutoSaveStatus("saved", `${hh}:${mm}:${ss}`);
+
+        if (data.fixed_count > 0) {
+          const splitNote = data.split_count > 0 ? ` (tách ${data.split_count} mảnh giữ nguyên Group ID)` : "";
+          showToast(`Đã tự sửa ${data.fixed_count} vùng chồng lấn và lưu JSON!${splitNote}`);
+        } else {
+          showToast("Không có vùng trùng cần sửa.");
+        }
+      } catch (err) {
+        console.error("Autofix overlap error:", err);
+        showToast("Lỗi kết nối khi tự sửa vùng trùng");
+      } finally {
+        isAutoFixingOverlap = false;
+        if (btn) btn.disabled = false;
+      }
+    }
+
     function resetInteractionState() {
       selectedAnnotationIndex = null;
+      currentOverlaps = [];
+      updateOverlapAlertUI();
       setActiveGroupId(null);
       historyStack = [];
       manualPolyPoints = [];
@@ -3515,13 +3900,22 @@
         const data = await res.json();
         if (currentImageName !== filename) return;
         annotations = data.annotations || [];
+        currentOverlaps = data.overlaps || [];
+        const cur = images.find(i => i.filename === filename);
+        if (cur) {
+          cur.annotations_count = annotations.length;
+          cur.has_overlap = Boolean(data.has_overlap);
+          cur.overlap_count = data.overlap_count || 0;
+        }
       } catch (e) {
         if (currentImageName !== filename) return;
         annotations = [];
+        currentOverlaps = [];
       } finally {
         if (currentImageName === filename) {
           historyStack = [];
           selectedAnnotationIndex = null;
+          renderThumbnails();
           updateAnnotationUI();
           redraw();
         }
@@ -3541,6 +3935,16 @@
           if (!res.ok || data.success === false) {
             throw new Error(data.error || "Save failed");
           }
+          const cur = images.find(i => i.filename === item.imageName);
+          if (cur) {
+            cur.has_overlap = Boolean(data.has_overlap);
+            cur.overlap_count = data.overlap_count || 0;
+          }
+          if (item.imageName === currentImageName) {
+            currentOverlaps = data.overlaps || [];
+            updateOverlapAlertUI();
+          }
+          renderThumbnails();
           const now = new Date();
           const hh = String(now.getHours()).padStart(2, "0");
           const mm = String(now.getMinutes()).padStart(2, "0");
@@ -3578,6 +3982,16 @@
       const sideCountEl = document.getElementById("sidebarAnnCount");
       if (sideCountEl) sideCountEl.innerText = annotations.length;
       renderClassList();
+
+      if (annotations.length < 2) {
+        currentOverlaps = [];
+        const cur = images.find(i => i.filename === currentImageName);
+        if (cur && (cur.has_overlap || cur.overlap_count)) {
+          cur.has_overlap = false;
+          cur.overlap_count = 0;
+          renderThumbnails();
+        }
+      }
 
       if (selectedAnnotationIndex !== null && (selectedAnnotationIndex < 0 || selectedAnnotationIndex >= annotations.length)) {
         selectedAnnotationIndex = null;
@@ -3622,6 +4036,7 @@
 
         const item = document.createElement("div");
         item.className = `ann-item ${isSelected ? 'selected' : ''}`;
+        item.dataset.annIdx = String(idx);
         item.onclick = () => selectAnnotation(idx);
 
         const optionsHtml = CLASSES.map(c =>
@@ -3640,6 +4055,7 @@
             <input type="number" min="0" step="1" data-ann-idx="${idx}" class="ann-group-input" style="${gidStyle}" value="${escapeHtml(gidVal)}" placeholder="ID" onclick="event.stopPropagation()" onchange="changeAnnotationGroupId(${idx}, this.value)" onkeydown="if(event.key==='Enter'){this.blur();}" title="Group ID vùng #${idx+1} (nhập số, vd: 1, 2)">
             <span class="type-pill-badge ${isBbox ? 'bbox' : ''}">${isBbox ? 'BOX' : 'POLY'}</span>
             <span style="color:#94a3b8; font-size:10px; font-weight:600;">#${idx+1}</span>
+            <span class="ann-overlap-tag"><i class="fa-solid fa-triangle-exclamation"></i></span>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
             <button onclick="event.stopPropagation(); removeAnnotation(${idx})" class="btn-del-ann" title="Xóa nhãn này">&times;</button>
@@ -3647,6 +4063,7 @@
         `;
         list.appendChild(item);
       });
+      updateOverlapAlertUI();
     }
 
     function removeAnnotation(idx) {
@@ -4069,6 +4486,7 @@
             closeDeviceModal();
             closeExportModal();
             closeGuideModal();
+            closeReleaseNotesModal();
             document.activeElement.blur();
           }
           return;
@@ -4082,12 +4500,13 @@
 
         if (e.key === "Escape") {
           if (isModalVisible("exportModal")) { closeExportModal(); return; }
+          if (isModalVisible("releaseNotesModal")) { closeReleaseNotesModal(); return; }
           if (isModalVisible("guideModal")) { closeGuideModal(); return; }
           if (isModalVisible("deviceModal")) { closeDeviceModal(); return; }
           if (isModalVisible("projectModal")) { closeProjectModal(); return; }
         }
 
-        if (["exportModal", "guideModal", "deviceModal", "projectModal"].some(isModalVisible)) {
+        if (["exportModal", "releaseNotesModal", "guideModal", "deviceModal", "projectModal"].some(isModalVisible)) {
           return;
         }
 
@@ -5841,6 +6260,24 @@
         if (panelEl) panelEl.classList.toggle("active", isActive);
         if (btnEl) btnEl.classList.toggle("active", isActive);
       });
+    }
+
+    function openReleaseNotesModal() {
+      const modal = document.getElementById("releaseNotesModal");
+      if (!modal) return;
+      modal.style.display = "flex";
+      modal.classList.add("show");
+    }
+
+    function closeReleaseNotesModal() {
+      const modal = document.getElementById("releaseNotesModal");
+      if (modal) {
+        modal.classList.remove("show");
+        modal.style.display = "none";
+      }
+      try {
+        localStorage.setItem(SEEN_VERSION_KEY, APP_VERSION);
+      } catch (_) {}
     }
   </script>
 </body>

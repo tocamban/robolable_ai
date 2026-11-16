@@ -8,4 +8,5 @@ matplotlib
 requests
 psutil
 nvidia-ml-py
+shapely>=2.0.0
 https://github.com/ultralytics/CLIP/archive/main.zip

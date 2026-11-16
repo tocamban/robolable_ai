@@ -1,12 +1,12 @@
 # RoboLabel AI — Studio Gán Nhãn & Phân Đoạn Ảnh Tự Động Cho YOLO
 
-![Version](https://img.shields.io/badge/Version-v1.2-7c3aed?style=flat-square)
+![Version](https://img.shields.io/badge/Version-v1.3-7c3aed?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%20--%203.14-3776ab?style=flat-square&logo=python&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-SAM%202.1%20%2B%20CLIP%20ViT--B%2F32-0ea5e9?style=flat-square)
 ![Export](https://img.shields.io/badge/Export-YOLO--Seg%20(.txt)%20%26%20Labelme%20(.json)-10b981?style=flat-square)
 ![Compute](https://img.shields.io/badge/Compute-NVIDIA%20CUDA%20%2F%20CPU-76b900?style=flat-square)
 
-> **Phiên bản hiện tại:** `v1.2` — Hiển thị badge phiên bản trên Header & hỗ trợ tự động cập nhật 1-click qua `update.bat`.
+> **Phiên bản hiện tại:** `v1.3` — Tự động phát hiện & sửa lỗi vẽ đè Polygon (`Auto-fix`), hiển thị thông báo cập nhật khi khởi động và hỗ trợ cập nhật 1-click qua `update.bat`.
 
 ---
 
@@ -23,10 +23,18 @@ Công cụ giúp rút ngắn tối đa thời gian vẽ thủ công khi cần g�
 | **Phân đoạn AI tức thì** | Tích hợp **SAM 2.1 (Tiny & Large)** qua **AI Smart Box (`S`)**, **AI Lasso** (khoanh tự do khi nhiều vật thể dính nhau) và **AI Point** — tự tách đường viền mượt, lọc nhiễu đảo nhỏ. |
 | **Tự nhận diện Class** | Bật **CLIP ViT-B/32** để tự phân tích vùng vừa tách và gán tên lớp phù hợp (hoặc tắt để gán thủ công theo class đang chọn). |
 | **Tinh chỉnh Polygon mượt** | **Cục tẩy (`E`)** gọt viền và giữ nguyên `group_id` khi cắt rời mảnh bị che; **Đắp thêm / Vẽ tay (`P`)** tự gộp Union; **Kéo đỉnh (`V`)**; **Hoàn tác (`Ctrl + Z`)** tối đa 30 bước. |
+| **Phát hiện & Tự sửa trùng nhãn (`Auto-fix`)** | Tự động phát hiện các cặp polygon giao nhau `> 2 px²` (vẫn cho phép chạm viền), hiện cảnh báo nổi bật kèm icon cảnh báo ở sidebar, và cắt trừ bằng **Shapely** theo ưu tiên `calyx > stem > quả > vẽ sau`, giữ nguyên `group_id` & `label` khi tách `MultiPolygon`. |
 | **Gán `Group ID` theo cụm** | Gắn ID nhóm trước khi vẽ (`-` / `+1` / `×`) hoặc sửa trực tiếp từng dòng để liên kết quả–đài–cuống (kể cả cuống bị lá che đứt 2 đoạn), tô viền đứt nét đồng bộ để kiểm tra nhầm cụm. |
 | **Xuất `.txt` & `.json` tùy chọn** | Xuất **YOLO `.txt`** (tọa độ chuẩn hóa `[0, 1]`, tự lược bỏ `group_id`), **Labelme / X-AnyLabeling `.json`** (pixel tuyệt đối, giữ `group_id`), hoặc **cả hai**, chọn cấu trúc `train/val` hoặc thư mục phẳng, hỗ trợ preset `Chuẩn 5 lớp`. |
 | **Quản lý Project & Auto-Save** | Tạo nhiều Project độc lập (kéo thả thư mục hoặc chọn từ ổ đĩa), tự nhận diện dataset ảnh thuần / YOLO Box / YOLO Seg, đồng bộ Auto-Save liên tục. |
 | **Điều phối GPU CUDA / CPU** | Tự dò GPU NVIDIA (`cu126` / `cu124`), chuyển đổi linh hoạt GPU/CPU ngay trên Header, tự lùi về CPU khi tràn VRAM và tích hợp **Benchmark GPU**. |
+
+### Điểm mới nổi bật trong phiên bản `v1.3`
+
+- **Phát hiện lỗi vẽ đè Polygon (`> 2 pixel²`):** Tự động kiểm tra toàn bộ cặp polygon khi mở ảnh hoặc ngay sau khi vẽ/sửa, bỏ qua trường hợp chỉ chạm sát biên hoặc sai số làm tròn `<= 2 px²`.
+- **Cảnh báo trực quan & Rà soát nhanh:** Hiển thị khung cảnh báo màu cam/đỏ ở góc trên vùng làm việc (ghi rõ cặp nhãn đè lên nhau, ví dụ `Phát hiện 1 vùng trùng: calyx đè lên ripe`), gắn icon cảnh báo cạnh tên ảnh ở sidebar phải và đánh dấu từng đối tượng trùng trong `Current Objects`.
+- **Nút "Tự sửa" (`Auto-fix`) bằng Shapely Boolean Difference:** Cắt bỏ phần giao nhau khỏi đối tượng bị đè theo thứ tự ưu tiên giữ hình dạng (`calyx` > `stem` > thân quả `ripe`/`almost_ripe`/`unripe` > polygon vẽ sau), tự động tách `MultiPolygon` thành các polygon độc lập vẫn giữ nguyên `group_id` & `label`, đồng thời lưu file JSON ngay.
+- **Thông báo điểm mới sau khi cập nhật:** Khi máy khác cập nhật bản mới qua `update.bat` và khởi động giao diện, popup giới thiệu bản cập nhật `v1.3` tự động hiển thị (có thể xem lại bằng cách bấm badge `v1.3` trên Header) cùng hướng dẫn trực quan trong tab **Tinh chỉnh & Tự sửa Trùng**.
 
 ### Điểm mới nổi bật trong phiên bản `v1.2`
 
@@ -39,7 +47,7 @@ Công cụ giúp rút ngắn tối đa thời gian vẽ thủ công khi cần g�
 1. [Cấu hình Tối thiểu, Khuyến nghị & Yêu cầu phần mềm](#1-cấu-hình-tối-thiểu-khuyến-nghị--yêu-cầu-phần-mềm)
 2. [Cài đặt, Khởi chạy & Cập nhật (`setup.bat`, `run_app.bat`, `update.bat`)](#2-cài-đặt-khởi-chạy--cập-nhật)
 3. [Tổng quan giao diện làm việc](#3-tổng-quan-giao-diện-làm-việc)
-4. [Hướng dẫn chi tiết từng bước sử dụng](#4-hướng-dẫn-chi-tiết-từng-bước-sử-dụng) • [Đánh `Group ID` theo cụm](#45-hướng-dẫn-đánh-group-id-theo-từng-vùngcụm) • [Xuất `.txt` / `.json` tùy chọn](#46-auto-save--xuất-nhãn-tùy-chọn-txt--json)
+4. [Hướng dẫn chi tiết từng bước sử dụng](#4-hướng-dẫn-chi-tiết-từng-bước-sử-dụng) • [Tự sửa lỗi vẽ đè (`Auto-fix`)](#44-tự-động-phát-hiện--sửa-lỗi-vẽ-đè-polygon-auto-fix) • [Đánh `Group ID` theo cụm](#46-hướng-dẫn-đánh-group-id-theo-từng-vùngcụm) • [Xuất `.txt` / `.json` tùy chọn](#47-auto-save--xuất-nhãn-tùy-chọn-txt--json)
 5. [Cấu trúc thư mục dự án](#5-cấu-trúc-thư-mục-dự-án)
 6. [Xử lý các lỗi thường gặp](#6-xử-lý-các-lỗi-thường-gặp)
 7. [Đóng gói & Đẩy thay đổi lên GitHub](#7-đóng-gói--đẩy-thay-đổi-lên-github-dành-cho-người-phát-triển)
@@ -95,7 +103,7 @@ cd robolable_ai
 Nhấp đúp vào **`setup.bat`**. Script sẽ tự động:
 1. Tạo môi trường ảo **`venv\`** tách biệt.
 2. Kiểm tra GPU NVIDIA (`nvidia-smi`) để cài **PyTorch CUDA `cu126`** (dự phòng `cu124`) hoặc tự chọn **PyTorch bản CPU**.
-3. Cài đặt thư viện từ `requirements.txt` (`Flask`, `Ultralytics`, `OpenCV`, `Pillow`, `CLIP`, `psutil`, `nvidia-ml-py`,...).
+3. Cài đặt thư viện từ `requirements.txt` (`Flask`, `Ultralytics`, `OpenCV`, `Pillow`, `Shapely`, `CLIP`, `psutil`, `nvidia-ml-py`,...).
 4. Tải trọng số mặc định vào `weights\`: `sam2.1_t.pt` (~75 MB) và `clip\ViT-B-32.pt` (~338 MB).
 
 Khi thấy thông báo **`CAI DAT HOAN TAT! BAN DA CO THE CHAY PROJECT!`**, nhấn phím bất kỳ để đóng.
@@ -120,7 +128,7 @@ Sau khi chạy `run_app.bat`, trình duyệt sẽ mở không gian làm việc c
    - **Chọn Project:** Hiển thị Workspace / Project hiện tại (ví dụ `Workspace Mặc định`); click để mở nhanh danh sách Project.
    - **Chọn mô hình SAM:** Chuyển giữa **`SAM 2.1 (Tiny)`** (nhanh, khuyên dùng hằng ngày) và **`SAM 2.1 (Large)`** (viền chi tiết hơn).
    - **Nút `GPU / CPU`:** Xem thiết bị đang chạy (`GPU: GTX 165...` hoặc `CPU`), chuyển đổi CUDA/CPU và mở **Benchmark GPU**.
-   - **Badge phiên bản (`v1.2`) & nút `Hướng dẫn` (`?` / `F1`):** Mở nhanh bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
+   - **Badge phiên bản (`v1.3`) & nút `Hướng dẫn` (`?` / `F1`):** Mở thông báo điểm mới bản cập nhật (khi nhấn badge `v1.3`) hoặc bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
    - **`Quản lý Project` / `Xuất nhãn` / `Tải ảnh`:** Tạo hoặc mở Dataset Project, xuất nhãn tùy chọn (`.txt` / `.json`), và thêm ảnh đơn lẻ.
 2. **Cột trái (Classes & Current Objects):**
    - Công tắc **`Tự nhận diện Class`** (bật để CLIP tự đoán nhãn khi cắt bằng AI; tắt để gán đúng Class đang chọn thủ công).
@@ -130,8 +138,9 @@ Sau khi chạy `run_app.bat`, trình duyệt sẽ mở không gian làm việc c
 3. **Vùng Canvas trung tâm & Thanh công cụ dọc:**
    - Thanh công cụ bên phải Canvas: **AI Smart Box (`S`)**, **AI Lasso**, **AI Point**, **Cục Tẩy (`E`)**, **Vẽ Polygon (`P`)**, **Bounding Box**, **Chọn & Kéo đỉnh (`V`)**, **Pan (`H`)**, **Hoàn tác (`Ctrl + Z`)**, và mở **Phím tắt (`?`)**.
    - Thanh dưới cùng Canvas: Thu/phóng **`- / 100% / + / RESET`** và nút bật/tắt **Mask** phủ màu bán trong suốt.
-4. **Cột phải (`Images`):**
-   - Dải thumbnail toàn bộ ảnh trong Project kèm huy hiệu số lượng nhãn trên từng ảnh để chuyển ảnh tức thì.
+4. **Cột trái (`Current Objects`) & Cột phải (`Images`):**
+   - Danh sách `Current Objects` hiển thị từng vùng kèm đánh dấu cam nếu vùng đó đang tham gia lỗi trùng nhãn (rê chuột để xem chi tiết cặp đè và diện tích `px²`).
+   - Dải thumbnail toàn bộ ảnh ở cột phải kèm huy hiệu số lượng nhãn và icon cảnh báo cam cạnh tên ảnh đang có lỗi trùng nhãn để dễ rà soát.
 
 ### Bảng Hướng dẫn trực quan tích hợp ngay trong app (`?` hoặc `F1`)
 
@@ -165,7 +174,26 @@ Khi AI tách bị lem ra ngoài hoặc cắt thiếu góc, bạn không cần x�
 - **Chọn & Kéo đỉnh (`V`):** Click chọn đối tượng để hiện các chấm đỉnh trên viền, kéo thả từng đỉnh tới đúng vị trí (tự lưu ngay khi thả chuột).
 - **Pan (`H` hoặc giữ chuột giữa) & Zoom:** Cuộn con lăn chuột để phóng to/thu nhỏ tại vị trí con trỏ; nhấn **`Ctrl + Z`** để hoàn tác tối đa **30 bước**.
 
-### 4.4. Bảng phím tắt nhanh
+### 4.4. Tự động phát hiện & Sửa lỗi vẽ đè Polygon (Auto-fix)
+
+Khi gán nhãn nhiều bộ phận sát nhau (quả, đài hoa, cuống), các đa giác dễ bị vẽ chồng lên nhau. Từ bản **`v1.3`**, hệ thống tự động kiểm tra và hỗ trợ cắt tỉa sạch chỉ bằng một cú bấm:
+
+1. **Ngưỡng phát hiện trùng nhãn (`> 2 pixel²`):**
+   - Toàn bộ các cặp polygon trên ảnh được kiểm tra tự động ngay khi mở ảnh hoặc ngay sau khi vẽ/sửa xong.
+   - Các nhãn được phép **chạm sát viền (touching boundary)** nhau: hệ thống **chỉ báo lỗi khi diện tích giao nhau lớn hơn `2 pixel²`**, tránh báo nhầm do sai số làm tròn tọa độ ở biên tiếp xúc.
+2. **Cảnh báo trên giao diện & Sidebar:**
+   - Góc trên vùng làm việc hiện khung cảnh báo màu cam/đỏ ghi rõ cặp nhãn bị đè (ví dụ: `Phát hiện 1 vùng trùng: calyx đè lên ripe`) cùng nút **`Tự sửa`**.
+   - Thanh ảnh bên phải (`Images`) gắn icon cảnh báo cạnh tên các ảnh đang có lỗi trùng để rà soát nhanh cả project; danh sách `Current Objects` bên trái cũng tô viền cam những đối tượng liên quan.
+3. **Thứ tự ưu tiên khi bấm nút `Tự sửa` (`Auto-fix`):**
+   - Dùng phép trừ đa giác (**Shapely Boolean Difference**) cắt phần giao nhau khỏi đối tượng bị đè (không chia đôi 50/50), giúp hai polygon chạm sát viền mà không chồng pixel:
+     - **Ưu tiên 1:** `calyx` (đài hoa) đè lên `ripe`, `almost_ripe`, `unripe` hoặc `stem` → giữ nguyên 100% `calyx`, cắt bỏ phần bị đè trên quả và cuống.
+     - **Ưu tiên 2:** `stem` (cuống) đè lên thân quả (`ripe`, `almost_ripe`, `unripe`) → giữ nguyên `stem`, cắt bỏ phần bị đè trên thân quả.
+     - **Cùng cấp ưu tiên** (ví dụ hai trái dâu đè lên nhau): giữ nguyên polygon vẽ sau (lớp trên) và cắt bỏ phần bị che trên polygon vẽ trước.
+4. **Tách mảnh rời (`MultiPolygon`) & Tự động lưu:**
+   - Nếu phép cắt trừ làm một polygon bị tách làm 2 mảnh rời nhau (ví dụ `calyx` cắt ngang qua `stem`), hệ thống lưu thành **2 polygon độc lập** nhưng **bắt buộc giữ nguyên `group_id` và `label` (`class_name`)** của polygon gốc.
+   - Sau khi xử lý xong, Canvas cập nhật lại ngay, đồng bộ file `.json` & `.txt`, đồng thời tự ẩn khung cảnh báo và icon ở sidebar (vẫn có thể bấm `Ctrl + Z` nếu muốn hoàn tác).
+
+### 4.5. Bảng phím tắt nhanh
 
 | Phím / Thao tác | Chức năng |
 | :--- | :--- |
@@ -183,7 +211,7 @@ Khi AI tách bị lem ra ngoài hoặc cắt thiếu góc, bạn không cần x�
 
 ---
 
-### 4.5. Hướng dẫn đánh `Group ID` theo từng vùng/cụm
+### 4.6. Hướng dẫn đánh `Group ID` theo từng vùng/cụm
 
 Khi một cụm đối tượng gồm nhiều bộ phận tách rời thuộc chung một thực thể — ví dụ mỗi quả dâu gồm **thịt quả** (`unripe` / `almost_ripe` / `ripe`), **đài hoa** (`calyx`) và **cuống** (`stem`) — bạn dùng **`Group ID`** để liên kết chúng lại:
 
@@ -202,7 +230,7 @@ Khi một cụm đối tượng gồm nhiều bộ phận tách rời thuộc ch
 
 ---
 
-### 4.6. Auto-Save & Xuất nhãn tùy chọn (`.txt` / `.json`)
+### 4.7. Auto-Save & Xuất nhãn tùy chọn (`.txt` / `.json`)
 
 - **Auto-Save:** Mọi thay đổi đều tự lưu ngay vào `annotations/<tên_ảnh>.json` (giữ `group_id`) và đồng bộ file `.txt` của Workspace/Project.
 - **Mở hộp thoại Xuất nhãn tùy chọn:** Bấm nút **`Xuất nhãn`** ở góc trên bên phải Header để tùy chỉnh toàn bộ cách xuất dữ liệu:
