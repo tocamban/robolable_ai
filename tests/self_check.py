@@ -105,6 +105,8 @@ def check_project_manager(tmp):
     assert pm_mod.normalize_group_id(True) is None
     assert pm_mod.normalize_group_id(-1) is None
     assert pm_mod.normalize_group_id("-3") is None
+    sanitized_label = pm_mod.sanitize_annotations_list([{"label": "ripe", "group_id": "2", "polygon": [[0, 0], [10, 0], [10, 10]]}, "bad"])
+    assert len(sanitized_label) == 1 and sanitized_label[0]["class_name"] == "ripe" and sanitized_label[0]["group_id"] == 2
 
     sample_anns = [
         {"class_name": "ripe", "group_id": 1, "type": "polygon", "polygon": [[12, 10], [60, 10], [60, 50], [12, 50]]},
@@ -357,6 +359,16 @@ def check_flask_routes(tmp):
             sdata = seg.get_json()
             assert seg.status_code == 200 and sdata["success"] is True and len(sdata["polygons"]) >= 1
 
+            seg_pt = client.post("/api/segment", json={
+                "image_name": "sample.jpg",
+                "model_id": "sam2_tiny",
+                "point": [60, 50],
+                "auto_classify": True,
+            })
+            pdata = seg_pt.get_json()
+            assert seg_pt.status_code == 200 and pdata["success"] is True and len(pdata["polygons"]) >= 1
+            assert pdata["auto_classified"] is True and pdata["confidence"] is not None
+
         # Upload session chunk + traversal rejection + finalize
         uinit = client.post("/api/projects/upload_init", json={"save_dir": save_dir, "project_name": "Upload Check"})
         sid = uinit.get_json()["session_id"]
@@ -462,6 +474,16 @@ def check_overlap_detection_and_autofix(tmp):
     assert fc_occ == 1 and sc_occ == 0 and len(fixed_occ) == 1
     assert fixed_occ[0]["class_name"] == "calyx"
     assert robolabel_app.detect_polygon_overlaps(fixed_occ) == []
+
+    # 5c. Non-dict resilience & long-diagonal-edge rounding zero-overlap guarantee
+    diag_anns = [
+        "invalid_entry",
+        {"class_name": "ripe", "type": "polygon", "polygon": [[0, 0], [3000, 0], [3000, 3000], [0, 3000]]},
+        {"class_name": "calyx", "type": "polygon", "polygon": [[0.111, 0.333], [2999.777, 1732.444], [1500.555, 2999.888]]},
+    ]
+    fixed_diag, fc_diag, _ = robolabel_app.autofix_polygon_overlaps(diag_anns)
+    assert fc_diag == 1 and len(fixed_diag) >= 2
+    assert robolabel_app.detect_polygon_overlaps(fixed_diag) == []
 
     # 6. Flask API integration: /api/annotations, /api/images, and /api/autofix_overlaps
     base_dir = os.path.join(tmp, "overlap_api_base")

@@ -583,12 +583,14 @@ def normalize_group_id(val):
 
 
 def sanitize_annotations_list(annotations_list):
-    """Return a clean copy of annotation dicts with normalized optional group_id."""
+    """Return a clean copy of annotation dicts with normalized class_name and optional group_id."""
     cleaned = []
     for item in (annotations_list or []):
         if not isinstance(item, dict):
             continue
         entry = dict(item)
+        if not entry.get("class_name") and entry.get("label"):
+            entry["class_name"] = str(entry["label"]).strip()
         gid = normalize_group_id(entry.get("group_id"))
         if gid is None:
             entry.pop("group_id", None)

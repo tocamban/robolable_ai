@@ -498,8 +498,44 @@ def detect_polygon_overlaps(annotations, min_area=OVERLAP_MIN_AREA_PX):
     return overlaps
 
 
+def _finalize_cut_pieces(pieces, higher_geoms, min_area=OVERLAP_MIN_AREA_PX):
+    """Làm tròn tọa độ mảnh cắt và gọt lại nếu sai số làm tròn dọc biên dài vẫn gây chồng > min_area."""
+    finalized = []
+    for piece_poly in pieces:
+        coords = _shapely_poly_to_coords(piece_poly, decimals=2)
+        if len(coords) < 3:
+            continue
+        rounded_poly = Polygon(coords)
+        if not rounded_poly.is_valid:
+            rounded_poly = rounded_poly.buffer(0)
+        if rounded_poly.is_empty or rounded_poly.area <= min_area:
+            continue
+
+        still_over = [
+            h for h in higher_geoms
+            if rounded_poly.intersects(h) and float(rounded_poly.intersection(h).area) > min_area
+        ]
+        if still_over:
+            trimmed = rounded_poly
+            for h in still_over:
+                trimmed = trimmed.difference(h.buffer(0.02))
+            for sub in _extract_valid_polygons(trimmed, min_area=min_area):
+                sub_coords = _shapely_poly_to_coords(sub, decimals=2)
+                if len(sub_coords) < 3:
+                    continue
+                sub_poly = Polygon(sub_coords)
+                if not sub_poly.is_valid:
+                    sub_poly = sub_poly.buffer(0)
+                if not sub_poly.is_empty and sub_poly.area > min_area:
+                    finalized.append((sub_coords, sub_poly))
+        else:
+            finalized.append((coords, rounded_poly))
+    return finalized
+
+
 def autofix_polygon_overlaps(annotations, min_area=OVERLAP_MIN_AREA_PX):
     """Cắt phần giao nhau khỏi polygon bị đè theo ưu tiên (calyx > stem > quả > vẽ sau), giữ group_id và label."""
+    annotations = [a for a in (annotations or []) if isinstance(a, dict)]
     if not annotations:
         return [], 0, 0
 
@@ -553,17 +589,8 @@ def autofix_polygon_overlaps(annotations, min_area=OVERLAP_MIN_AREA_PX):
                 reverse=True,
             )
             piece_dicts = []
-            for piece_poly in pieces:
-                coords = _shapely_poly_to_coords(piece_poly, decimals=2)
-                if len(coords) < 3:
-                    continue
-                rounded_poly = Polygon(coords)
-                if not rounded_poly.is_valid:
-                    rounded_poly = rounded_poly.buffer(0)
-                if rounded_poly.is_empty or rounded_poly.area <= min_area:
-                    continue
+            for coords, rounded_poly in _finalize_cut_pieces(pieces, higher_geoms, min_area=min_area):
                 higher_geoms.append(rounded_poly)
-
                 new_ann = dict(ann)
                 new_ann["class_name"] = cls_name
                 if "label" in ann:
@@ -729,6 +756,21 @@ def _extract_clean_polygons_from_mask(mask_np, orig_w, orig_h, bbox=None, lasso_
     return [poly] if len(poly) >= 3 else []
 
 
+def _classify_crop_box(im, box, orig_w, orig_h, target_classes):
+    """Cắt vùng ảnh theo box và chạy CLIP phân loại nếu vùng cắt đủ lớn."""
+    x1, y1, x2, y2 = box
+    crop_box = (
+        int(max(0, min(x1, x2))),
+        int(max(0, min(y1, y2))),
+        int(min(orig_w, max(x1, x2))),
+        int(min(orig_h, max(y1, y2))),
+    )
+    if (crop_box[2] - crop_box[0] > 8) and (crop_box[3] - crop_box[1] > 8):
+        crop = im.crop(crop_box)
+        return classify_crop(crop, target_classes=target_classes)
+    return None, None
+
+
 @app.route("/api/segment", methods=["POST"])
 def segment():
     ctx = pm.get_active_context()
@@ -762,16 +804,8 @@ def segment():
         # Tự động nhận dạng vật thể trong vùng bao (Auto-Classification)
         if auto_classify and bbox:
             try:
-                x1, y1, x2, y2 = bbox
-                crop_box = (
-                    int(max(0, min(x1, x2))),
-                    int(max(0, min(y1, y2))),
-                    int(min(orig_w, max(x1, x2))),
-                    int(min(orig_h, max(y1, y2)))
-                )
-                if (crop_box[2] - crop_box[0] > 8) and (crop_box[3] - crop_box[1] > 8):
-                    crop = im.crop(crop_box)
-                    detected_class, conf = classify_crop(crop, target_classes=ctx["classes"])
+                detected_class, conf = _classify_crop_box(im, bbox, orig_w, orig_h, ctx["classes"])
+                if detected_class:
                     label_class = detected_class
                     confidence = conf
                     auto_classified = True
@@ -813,6 +847,22 @@ def segment():
         if not polygons and bbox:
             x1, y1, x2, y2 = bbox
             polygons = [[[x1, y1], [x2, y1], [x2, y2], [x1, y2]]]
+
+        if auto_classify and not auto_classified and polygons:
+            try:
+                pxs = [float(p[0]) for p in polygons[0]]
+                pys = [float(p[1]) for p in polygons[0]]
+                with Image.open(img_path) as im:
+                    detected_class, conf = _classify_crop_box(
+                        im, [min(pxs), min(pys), max(pxs), max(pys)], orig_w, orig_h, ctx["classes"]
+                    )
+                if detected_class:
+                    label_class = detected_class
+                    confidence = conf
+                    auto_classified = True
+                    print(f"[*] Tự động nhận diện vật thể (Point): {label_class} ({confidence}%)")
+            except Exception as e:
+                print(f"[!] Auto-classify (point) failed: {e}")
 
         return jsonify({
             "success": True,
@@ -859,7 +909,7 @@ def edit_polygon():
 
         # Tạo mask nhị phân từ polygon ban đầu
         mask = np.zeros((img_h, img_w), dtype=np.uint8)
-        poly_np = np.array(polygon, dtype=np.int32).reshape((-1, 1, 2))
+        poly_np = np.round(np.array(polygon, dtype=np.float32)).astype(np.int32).reshape((-1, 1, 2))
         cv2.fillPoly(mask, [poly_np], 255)
 
         if operation == "erase":
@@ -879,7 +929,7 @@ def edit_polygon():
         elif operation == "add":
             add_poly = data.get("add_polygon", [])
             if add_poly and len(add_poly) >= 3:
-                add_np = np.array(add_poly, dtype=np.int32).reshape((-1, 1, 2))
+                add_np = np.round(np.array(add_poly, dtype=np.float32)).astype(np.int32).reshape((-1, 1, 2))
                 cv2.fillPoly(mask, [add_np], 255)
 
         # Trích xuất contours từ mask đã chỉnh sửa

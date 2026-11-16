@@ -61,8 +61,8 @@
       align-items: center;
       gap: 5px;
       color: #334155;
-      min-width: 0;
-      flex: 0 1 220px;
+      min-width: 80px;
+      flex: 0 1 200px;
       overflow: hidden;
     }
 
@@ -1520,10 +1520,14 @@
       border-bottom: 1px solid #f1f5f9;
       color: #1e293b;
     }
-    @media (max-width: 1100px) {
-      header { padding: 0 10px; gap: 6px; }
-      .top-right { gap: 5px; }
-      .btn-guide-header, .btn-project-mgr, .btn-train { padding: 5px 9px; font-size: 11.5px; }
+    @media (max-width: 1240px) {
+      header { padding: 0 8px; gap: 6px; }
+      .top-left, .top-right { gap: 5px; }
+      .project-pill { max-width: 135px; padding: 4px 8px; font-size: 11px; }
+      .model-badge, .autosave-badge { padding: 3px 7px; font-size: 10.5px; }
+      .sam-model-select { max-width: 112px; font-size: 10.5px; }
+      .device-pill span { max-width: 125px; overflow: hidden; text-overflow: ellipsis; }
+      .btn-guide-header, .btn-project-mgr, .btn-train { padding: 5px 8px; font-size: 11px; }
     }
     @media (max-width: 740px) {
       .guide-card-grid, .guide-legend-grid, .guide-workflow-row {
@@ -3343,6 +3347,22 @@
       return -1;
     }
 
+    function applyEditedPolygonPieces(target, polygons) {
+      target.polygon = polygons[0];
+      target.type = "polygon";
+      delete target.bbox;
+      // Nếu polygon bị tách thành nhiều mảnh rời, thêm thành polygon độc lập và giữ nguyên group_id
+      for (let i = 1; i < polygons.length; i++) {
+        const piece = {
+          class_name: target.class_name,
+          type: "polygon",
+          polygon: polygons[i]
+        };
+        if (hasGroupId(target)) piece.group_id = target.group_id;
+        annotations.push(piece);
+      }
+    }
+
     async function applyEraserStrokes() {
       if (!eraserStrokes.length || selectedAnnotationIndex === null) return;
       const target = annotations[selectedAnnotationIndex];
@@ -3364,19 +3384,7 @@
           selectedAnnotationIndex = null;
           showToast("Đã xóa hoàn toàn đối tượng");
         } else if (data.polygons && data.polygons.length > 0) {
-          target.polygon = data.polygons[0];
-          target.type = "polygon";
-          delete target.bbox;
-          // Nếu polygon bị đứt thành nhiều mảnh con, thêm vào danh sách và giữ nguyên group_id
-          for (let i = 1; i < data.polygons.length; i++) {
-            const piece = {
-              class_name: target.class_name,
-              type: "polygon",
-              polygon: data.polygons[i]
-            };
-            if (hasGroupId(target)) piece.group_id = target.group_id;
-            annotations.push(piece);
-          }
+          applyEditedPolygonPieces(target, data.polygons);
           showToast("✂️ Đã tẩy bớt phần thừa thành công!");
         }
         updateAnnotationUI();
@@ -3415,9 +3423,7 @@
             image_height: canvas.height
           });
           if (data.polygons && data.polygons.length > 0) {
-            target.polygon = data.polygons[0];
-            target.type = "polygon";
-            delete target.bbox;
+            applyEditedPolygonPieces(target, data.polygons);
             showToast(`✅ Đã đắp thêm phần thiếu vào ${target.class_name} #${selectedAnnotationIndex + 1}!`);
           }
         } catch (e) {
@@ -3819,6 +3825,7 @@
     }
 
     function resetInteractionState() {
+      annotations = [];
       selectedAnnotationIndex = null;
       currentOverlaps = [];
       updateOverlapAlertUI();
@@ -4099,15 +4106,8 @@
         saveAnnotations();
         redraw();
         showToast("Đã hoàn tác (Undo)");
-      } else if (annotations.length > 0) {
-        annotations.pop();
-        if (selectedAnnotationIndex !== null && selectedAnnotationIndex >= annotations.length) {
-          selectedAnnotationIndex = null;
-        }
-        updateAnnotationUI();
-        saveAnnotations();
-        redraw();
-        showToast("Đã xóa nhãn gần nhất");
+      } else {
+        showToast("Không còn bước nào để hoàn tác");
       }
     }
 
