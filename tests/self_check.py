@@ -231,6 +231,21 @@ def check_project_manager(tmp):
     assert ctx_after_rest["manifest"].get("splits", {}).get("sample.jpg") == "train"
     assert ctx_after_rest["manifest"].get("last_image") == "sample.jpg"
 
+    # Corrupt image during export_dataset must fail BEFORE wiping dataset split directories
+    corrupt_img = os.path.join(pdir, "images", "corrupt.jpg")
+    with open(corrupt_img, "wb") as cf:
+        cf.write(b"not-an-image")
+    try:
+        try:
+            mgr.export_dataset(export_format="txt", layout="split")
+            raise AssertionError("Expected ValueError on corrupt image export")
+        except ValueError as exc:
+            assert "corrupt.jpg" in str(exc)
+        assert os.path.exists(os.path.join(pdir, "dataset", "images", "train", "sample.jpg"))
+    finally:
+        if os.path.exists(corrupt_img):
+            os.remove(corrupt_img)
+
     del_proj_again = mgr.delete_image("sample.jpg")
     assert del_proj_again["success"] is True and del_proj_again["remaining_images"] == 0
     assert not os.path.exists(os.path.join(pdir, "images", "sample.jpg"))
@@ -254,20 +269,50 @@ def check_flask_routes(tmp):
     client = robolabel_app.app.test_client()
     try:
         index_resp = client.get("/")
-        assert index_resp.status_code == 200 and b"labelScale" in index_resp.data
+        assert index_resp.status_code == 200 and b"labelScale" in index_resp.data and b"IntersectionObserver" in index_resp.data
         assert client.get("/api/system_info").status_code == 200
         assert len(client.get("/api/models").get_json()) >= 2
         assert "classes" in client.get("/api/classes").get_json()
         assert client.get("/api/images").status_code == 200
         assert client.get("/api/projects").status_code == 200
 
-        # Upload, image fetch, annotation save/load & path traversal check
+        # Upload, image fetch, thumbnail fetch, annotation save/load & path traversal check
         assert client.post("/api/upload", data={}).status_code == 400
         assert client.post("/api/upload", data={"file": (io.BytesIO(b"bad"), "evil.txt")}).status_code == 400
         up = client.post("/api/upload", data={"file": (_img_bytes(), "up_test.jpg")})
-        assert up.status_code == 200 and up.get_json()["filename"] == "up_test.jpg"
+        up_json = up.get_json()
+        assert up.status_code == 200 and up_json["filename"] == "up_test.jpg" and "thumb_url" in up_json
         img_resp = client.get("/api/image/up_test.jpg")
         assert img_resp.status_code == 200 and "no-store" in img_resp.headers.get("Cache-Control", "")
+        img_resp.close()
+        thumb_resp = client.get("/api/thumb/up_test.jpg")
+        assert thumb_resp.status_code == 200 and thumb_resp.mimetype == "image/jpeg"
+        assert "private" in thumb_resp.headers.get("Cache-Control", "")
+        with Image.open(io.BytesIO(thumb_resp.data)) as th_im:
+            assert th_im.size[0] <= 160 and th_im.size[1] <= 140
+        thumb_resp.close()
+        assert client.get("/api/thumb/sub/bad.jpg").status_code == 400
+        assert client.get("/api/thumb/bad.txt").status_code == 400
+        assert client.get("/api/thumb/missing.jpg").status_code == 404
+        up_ctx = robolabel_app.pm.get_active_context()
+        disk_img_path = os.path.join(up_ctx["images_dir"], "disk_only.jpg")
+        disk_json_path = os.path.join(up_ctx["annotations_dir"], "disk_only.jpg.json")
+        with open(disk_img_path, "wb") as df:
+            df.write(_img_bytes().getvalue())
+        try:
+            imgs_payload = client.get("/api/images").get_json()
+            assert any(it["filename"] == "up_test.jpg" and "/api/thumb/" in it.get("thumb_url", "") for it in imgs_payload)
+            assert any(it["filename"] == "disk_only.jpg" and it["annotations_count"] == 0 for it in imgs_payload)
+            assert not os.path.exists(disk_json_path), "GET /api/images must not create empty .json files"
+            with open(disk_json_path, "w", encoding="utf-8") as cf:
+                cf.write("{corrupt")
+            corrupt_ann = client.get("/api/annotations/disk_only.jpg")
+            corrupt_json = corrupt_ann.get_json()
+            assert corrupt_ann.status_code == 200 and corrupt_json["annotations"] == [] and corrupt_json["has_overlap"] is False
+        finally:
+            for fp in (disk_img_path, disk_json_path):
+                if os.path.exists(fp):
+                    os.remove(fp)
         assert client.get("/api/annotations/sub/bad.jpg").status_code == 400
 
         save_ann = client.post(
@@ -346,10 +391,17 @@ def check_flask_routes(tmp):
         assert client.post("/api/restore_image", json={}).status_code == 200
         assert client.post("/api/restore_image", json={}).status_code == 400
         assert client.post("/api/delete_image", json={"image_name": "del_me.jpg"}).status_code == 200
+        robolabel_app.pm.record_last_image("up_test.jpg")
+        rest_bg = client.post("/api/restore_image", json={"update_last_image": False})
+        assert rest_bg.status_code == 200 and rest_bg.get_json()["restored_image"] == "del_me.jpg"
+        assert robolabel_app.pm.get_active_context()["last_image"] == "up_test.jpg"
+        assert client.post("/api/delete_image", json={"image_name": "del_me.jpg"}).status_code == 200
 
         # Device & polygon editing
         bad_dev = client.post("/api/set_device", json={"device": "invalid"})
         assert bad_dev.status_code == 400 and bad_dev.get_json()["success"] is False
+        no_ct_dev = client.post("/api/set_device", data='{"device": "invalid"}')
+        assert no_ct_dev.status_code == 400 and no_ct_dev.get_json()["success"] is False
 
         assert client.post("/api/edit_polygon", json={"polygon": [[0, 0]], "operation": "erase"}).status_code == 400
         erased = client.post("/api/edit_polygon", json={
@@ -381,6 +433,8 @@ def check_flask_routes(tmp):
 
         # Segment validation (+ live SAM+CLIP inference if local weight exists)
         assert client.post("/api/segment", json={}).status_code == 400
+        assert client.post("/api/segment", json={"image_name": ".", "bbox": [1, 1, 10, 10]}).status_code == 400
+        assert client.post("/api/segment", json={"image_name": "../bad.jpg", "bbox": [1, 1, 10, 10]}).status_code == 400
         assert client.post("/api/segment", json={"image_name": "missing.jpg", "bbox": [1, 1, 10, 10]}).status_code == 404
         assert client.post("/api/segment", json={"image_name": "up_test.jpg"}).status_code == 400
 

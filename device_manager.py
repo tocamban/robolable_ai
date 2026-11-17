@@ -403,8 +403,13 @@ def _benchmark_tensor_device(device_str: str, warmup: int = 1, runs: int = 5) ->
 
 def _pick_benchmark_image(sample_image_path: str | None) -> tuple[str, bool]:
     """Return a valid RGB image path for benchmarking; synthesize one safely if needed."""
-    if sample_image_path and os.path.exists(sample_image_path):
-        return sample_image_path, False
+    if sample_image_path and os.path.isfile(sample_image_path):
+        try:
+            with Image.open(sample_image_path) as im:
+                im.verify()
+            return sample_image_path, False
+        except Exception:
+            pass
 
     arr = np.zeros((480, 640, 3), dtype=np.uint8)
     arr[:, :] = (34, 90, 42)
@@ -433,12 +438,12 @@ def _benchmark_sam_model(
 
     from ultralytics import SAM
 
-    with Image.open(img_path) as im:
-        w, h = im.size
-    box = [w * 0.2, h * 0.2, w * 0.8, h * 0.8]
-
     model = None
     try:
+        with Image.open(img_path) as im:
+            w, h = im.size
+        box = [w * 0.2, h * 0.2, w * 0.8, h * 0.8]
+
         load_t0 = time.perf_counter()
         model = SAM(weight_path)
         load_ms = (time.perf_counter() - load_t0) * 1000.0

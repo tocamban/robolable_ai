@@ -12,7 +12,7 @@ import torch
 import numpy as np
 import cv2
 from flask import Flask, request, jsonify, send_file, send_from_directory
-from PIL import Image
+from PIL import Image, ImageOps
 from shapely.geometry import Polygon, MultiPolygon, GeometryCollection, LineString
 from shapely.ops import unary_union
 from shapely.validation import make_valid
@@ -229,7 +229,7 @@ def system_info():
 @app.route("/api/set_device", methods=["POST"])
 def api_set_device():
     global DEVICE, DEVICE_NAME, PREFERRED_DEVICE, DEVICE_FALLBACK_NOTE
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     target = str(data.get("device", "")).strip().lower()
     if target not in ("cpu", "cuda", "auto"):
         return jsonify({
@@ -265,7 +265,7 @@ def api_set_device():
 
 @app.route("/api/benchmark_gpu", methods=["POST"])
 def api_benchmark_gpu():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     include_sam_large = bool(data.get("include_sam_large", False))
 
     sample_image_path = None
@@ -619,10 +619,7 @@ def list_images():
         ann_path = os.path.join(ann_dir, f"{f}.json")
         ann_count = 0
         overlaps = []
-        if not os.path.exists(ann_path):
-            with open(ann_path, 'w', encoding='utf-8') as af:
-                json.dump({"annotations": []}, af, indent=2)
-        else:
+        if os.path.isfile(ann_path):
             try:
                 with open(ann_path, 'r', encoding='utf-8') as af:
                     ann_data = json.load(af)
@@ -635,6 +632,7 @@ def list_images():
         result.append({
             "filename": f,
             "url": f"/api/image/{quote(f)}?p={ctx['id']}",
+            "thumb_url": f"/api/thumb/{quote(f)}?p={ctx['id']}",
             "annotations_count": ann_count,
             "split": splits_map.get(f),
             "has_overlap": len(overlaps) > 0,
@@ -650,6 +648,39 @@ def get_image(filename):
     resp = send_from_directory(ctx["images_dir"], safe_name, max_age=0)
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     return resp
+
+@app.route("/api/thumb/<path:filename>", methods=["GET"])
+def get_thumb(filename):
+    """Serve a compact JPEG thumbnail so large projects do not decode full images into browser RAM."""
+    ctx = pm.get_active_context()
+    safe_name = os.path.basename(filename)
+    if not safe_name or safe_name != filename or not is_image_file(safe_name):
+        return jsonify({"error": "Invalid filename"}), 400
+    img_path = os.path.join(ctx["images_dir"], safe_name)
+    if not os.path.isfile(img_path):
+        return jsonify({"error": "Image not found"}), 404
+    try:
+        with Image.open(img_path) as im:
+            im = ImageOps.exif_transpose(im)
+            resample = getattr(Image, "Resampling", Image).BILINEAR
+            im.thumbnail((160, 140), resample)
+            if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+                rgba = im.convert("RGBA")
+                bg = Image.new("RGB", rgba.size, (248, 250, 252))
+                bg.paste(rgba, mask=rgba.split()[3])
+                im_rgb = bg
+            elif im.mode != "RGB":
+                im_rgb = im.convert("RGB")
+            else:
+                im_rgb = im
+            buf = io.BytesIO()
+            im_rgb.save(buf, format="JPEG", quality=78)
+            buf.seek(0)
+        resp = send_file(buf, mimetype="image/jpeg")
+        resp.headers["Cache-Control"] = "private, max-age=3600"
+        return resp
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/upload", methods=["POST"])
 def upload_image():
@@ -669,7 +700,12 @@ def upload_image():
     if not os.path.exists(ann_path):
         pm.sync_image_annotations(safe_name, [], update_last_image=False)
 
-    return jsonify({"success": True, "filename": safe_name, "url": f"/api/image/{quote(safe_name)}?p={ctx['id']}"})
+    return jsonify({
+        "success": True,
+        "filename": safe_name,
+        "url": f"/api/image/{quote(safe_name)}?p={ctx['id']}",
+        "thumb_url": f"/api/thumb/{quote(safe_name)}?p={ctx['id']}",
+    })
 
 
 @app.route("/api/delete_image", methods=["POST"])
@@ -688,8 +724,10 @@ def delete_image():
 
 @app.route("/api/restore_image", methods=["POST"])
 def restore_image():
+    data = request.get_json(silent=True) or {}
+    update_last_image = bool(data.get("update_last_image", True))
     try:
-        return jsonify(pm.restore_deleted_image())
+        return jsonify(pm.restore_deleted_image(update_last_image=update_last_image))
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
     except Exception as e:
@@ -798,8 +836,8 @@ def _classify_crop_box(im, box, orig_w, orig_h, target_classes):
 @app.route("/api/segment", methods=["POST"])
 def segment():
     ctx = pm.get_active_context()
-    data = request.json or {}
-    image_name = data.get("image_name")
+    data = request.get_json(silent=True) or {}
+    image_name = str(data.get("image_name") or "").strip()
     model_id = data.get("model_id", "sam2_tiny")
     bbox = data.get("bbox") # [x1, y1, x2, y2]
     lasso_polygon = data.get("lasso_polygon") # [[x, y], ...]
@@ -810,9 +848,12 @@ def segment():
 
     if not image_name:
         return jsonify({"error": "Missing image_name"}), 400
+    safe_name = os.path.basename(image_name)
+    if safe_name != image_name or not is_image_file(safe_name):
+        return jsonify({"error": "Invalid image_name"}), 400
 
-    img_path = os.path.join(ctx["images_dir"], os.path.basename(image_name))
-    if not os.path.exists(img_path):
+    img_path = os.path.join(ctx["images_dir"], safe_name)
+    if not os.path.isfile(img_path):
         return jsonify({"error": "Image not found"}), 404
 
     with Image.open(img_path) as im:
@@ -908,7 +949,7 @@ def edit_polygon():
     """
     try:
         ctx = pm.get_active_context()
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         polygon = data.get("polygon", [])
         operation = data.get("operation", "erase")  # 'erase' or 'add'
         img_name = data.get("image_name", "")
@@ -1014,9 +1055,16 @@ def handle_annotations(filename):
     else:
         pm.record_last_image(safe_name)
         ann_data = {"annotations": []}
-        if os.path.exists(ann_path):
-            with open(ann_path, "r", encoding="utf-8") as f:
-                ann_data = json.load(f)
+        if os.path.isfile(ann_path):
+            try:
+                with open(ann_path, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    ann_data = loaded
+                    if not isinstance(ann_data.get("annotations"), list):
+                        ann_data["annotations"] = []
+            except Exception:
+                ann_data = {"annotations": []}
         overlaps = detect_polygon_overlaps(ann_data.get("annotations", []))
         return jsonify({
             **ann_data,
@@ -1155,21 +1203,21 @@ def api_list_projects():
 
 @app.route("/api/browse_folder", methods=["POST"])
 def api_browse_folder():
-    data = request.json or {}
-    title = str(data.get("title", "Chọn thư mục")).replace('"', "'")
-    initial_dir = data.get("initial_dir") or BASE_DIR
+    data = request.get_json(silent=True) or {}
+    title = str(data.get("title", "Chọn thư mục"))
+    initial_dir = str(data.get("initial_dir") or BASE_DIR)
     if not os.path.isdir(initial_dir):
         initial_dir = BASE_DIR
 
     script = (
         "import sys, tkinter as tk; from tkinter import filedialog; "
         "r = tk.Tk(); r.withdraw(); r.attributes('-topmost', True); r.update(); "
-        f"p = filedialog.askdirectory(title={json.dumps(title)}, initialdir={json.dumps(initial_dir)}); "
+        "p = filedialog.askdirectory(title=sys.argv[1], initialdir=sys.argv[2]); "
         "r.destroy(); "
         "sys.stdout.buffer.write((p or '').encode('utf-8'))"
     )
     try:
-        proc = subprocess.run([sys.executable, "-c", script], capture_output=True, timeout=120)
+        proc = subprocess.run([sys.executable, "-c", script, title, initial_dir], capture_output=True, timeout=120)
         selected = proc.stdout.decode("utf-8", errors="ignore").strip()
         if not selected:
             return jsonify({"success": True, "cancelled": True, "path": ""})
@@ -1181,7 +1229,7 @@ def api_browse_folder():
 @app.route("/api/projects/analyze_path", methods=["POST"])
 @_api_action
 def api_analyze_local_path():
-    source_dir = ((request.json or {}).get("source_dir") or "").strip()
+    source_dir = (((request.get_json(silent=True) or {}).get("source_dir")) or "").strip()
     scan = inspect_dataset_folder(source_dir)
     scan.pop("entries", None)
     scan["source_dir"] = os.path.abspath(source_dir)
@@ -1192,7 +1240,7 @@ def api_analyze_local_path():
 @app.route("/api/projects/create_from_path", methods=["POST"])
 @_api_action
 def api_create_project_from_path():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     created = pm.create_project_from_local_folder(
         source_dir=(data.get("source_dir") or "").strip(),
         save_dir=(data.get("save_dir") or "").strip(),
@@ -1206,7 +1254,7 @@ def api_create_project_from_path():
 @app.route("/api/projects/upload_init", methods=["POST"])
 @_api_action
 def api_project_upload_init():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     return pm.init_upload_session(
         save_dir=(data.get("save_dir") or "").strip(),
         project_name=(data.get("project_name") or "").strip(),
@@ -1227,7 +1275,7 @@ def api_project_upload_chunk():
 @app.route("/api/projects/upload_finalize", methods=["POST"])
 @_api_action
 def api_project_upload_finalize():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     created = pm.finalize_upload_session(
         session_id=data.get("session_id", ""),
         custom_classes=data.get("classes"),
@@ -1238,28 +1286,28 @@ def api_project_upload_finalize():
 
 @app.route("/api/projects/upload_cancel", methods=["POST"])
 def api_project_upload_cancel():
-    pm.cancel_upload_session((request.json or {}).get("session_id", ""))
+    pm.cancel_upload_session((request.get_json(silent=True) or {}).get("session_id", ""))
     return jsonify({"success": True})
 
 
 @app.route("/api/projects/switch", methods=["POST"])
 @_api_action
 def api_switch_project():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     return pm.switch_project(project_id=data.get("project_id"), project_dir=data.get("project_dir"))
 
 
 @app.route("/api/projects/open_folder", methods=["POST"])
 @_api_action
 def api_open_project_folder():
-    project_dir = ((request.json or {}).get("project_dir") or "").strip()
+    project_dir = (((request.get_json(silent=True) or {}).get("project_dir")) or "").strip()
     return pm.open_existing_project_folder(project_dir)
 
 
 @app.route("/api/projects/remove", methods=["POST"])
 @_api_action
 def api_remove_project():
-    return pm.remove_from_registry((request.json or {}).get("project_id", ""))
+    return pm.remove_from_registry((request.get_json(silent=True) or {}).get("project_id", ""))
 
 if __name__ == "__main__":
     print(f"[*] Starting RoboLabel AI on http://127.0.0.1:5050 ...")

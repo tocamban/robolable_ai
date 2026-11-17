@@ -4,6 +4,8 @@ import json
 import uuid
 import shutil
 import random
+import threading
+from functools import wraps
 from datetime import datetime
 from collections import Counter
 from PIL import Image
@@ -644,6 +646,8 @@ def annotations_to_yolo_lines(annotations, img_w, img_h, class_names):
         return lines
 
     for item in (annotations or []):
+        if not isinstance(item, dict):
+            continue
         cname = item.get("class_name")
         if cname not in class_names:
             continue
@@ -673,6 +677,8 @@ def annotations_to_labelme_json(annotations, img_name, img_w, img_h):
     shapes = []
     if img_w > 0 and img_h > 0:
         for item in (annotations or []):
+            if not isinstance(item, dict):
+                continue
             cname = str(item.get("class_name") or "").strip()
             if not cname:
                 continue
@@ -761,6 +767,14 @@ def _path_is_same_or_inside(candidate, other):
         return False
 
 
+def _locked(fn):
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return fn(self, *args, **kwargs)
+    return wrapper
+
+
 class ProjectManager:
     """Manages active workspace/project state, safe dataset import, auto-save sync, and registry."""
 
@@ -776,6 +790,7 @@ class ProjectManager:
         self.default_dataset = os.path.join(self.base_dir, "dataset")
         self.upload_sessions = {}
         self.deleted_backups = {}
+        self._lock = threading.RLock()
 
         os.makedirs(self.default_uploads, exist_ok=True)
         os.makedirs(self.default_annotations, exist_ok=True)
@@ -849,6 +864,7 @@ class ProjectManager:
         mpath = os.path.join(project_dir, self.MANIFEST_FILENAME)
         atomic_write_json(mpath, manifest)
 
+    @_locked
     def get_active_context(self):
         active_id = self.registry.get("active_project_id", self.DEFAULT_ID)
         if active_id != self.DEFAULT_ID:
@@ -903,6 +919,7 @@ class ProjectManager:
             "format_label": "Workspace Mặc định",
         }
 
+    @_locked
     def list_projects_state(self):
         ctx = self.get_active_context()
         default_stats = _compute_project_stats(self.default_uploads, self.default_annotations)
@@ -1133,6 +1150,7 @@ class ProjectManager:
             },
         }
 
+    @_locked
     def create_project_from_local_folder(
         self,
         source_dir,
@@ -1161,6 +1179,7 @@ class ProjectManager:
                 shutil.rmtree(project_dir, ignore_errors=True)
             raise
 
+    @_locked
     def init_upload_session(self, save_dir, project_name, source_name=""):
         clean_name, _, project_dir = self.validate_new_project_target(save_dir, project_name, source_dir=None)
         session_id = uuid.uuid4().hex
@@ -1180,6 +1199,7 @@ class ProjectManager:
             "project_name": clean_name,
         }
 
+    @_locked
     def add_upload_chunk(self, session_id, file_items):
         sess = self.upload_sessions.get(session_id)
         if not sess:
@@ -1206,6 +1226,7 @@ class ProjectManager:
             sess["file_count"] += 1
         return {"saved": saved, "total_received": sess["file_count"]}
 
+    @_locked
     def finalize_upload_session(self, session_id, custom_classes=None, use_default_classes=False):
         sess = self.upload_sessions.pop(session_id, None)
         if not sess:
@@ -1229,12 +1250,14 @@ class ProjectManager:
             shutil.rmtree(project_dir, ignore_errors=True)
             raise
 
+    @_locked
     def cancel_upload_session(self, session_id):
         sess = self.upload_sessions.pop(session_id, None)
         if sess and os.path.isdir(sess["project_dir"]):
             shutil.rmtree(sess["project_dir"], ignore_errors=True)
         return True
 
+    @_locked
     def switch_project(self, project_id=None, project_dir=None):
         if project_id == self.DEFAULT_ID:
             self.registry["active_project_id"] = self.DEFAULT_ID
@@ -1256,6 +1279,7 @@ class ProjectManager:
         self._save_registry()
         return self.list_projects_state()
 
+    @_locked
     def open_existing_project_folder(self, project_dir):
         if not project_dir or not os.path.isdir(project_dir):
             raise ValueError("Thư mục project không tồn tại.")
@@ -1275,6 +1299,7 @@ class ProjectManager:
         self._save_registry()
         return self.list_projects_state()
 
+    @_locked
     def remove_from_registry(self, project_id):
         if project_id == self.DEFAULT_ID:
             raise ValueError("Không thể gỡ Workspace Mặc định.")
@@ -1284,6 +1309,7 @@ class ProjectManager:
         self._save_registry()
         return self.list_projects_state()
 
+    @_locked
     def sync_image_annotations(self, filename, annotations_list, update_last_image=True):
         ctx = self.get_active_context()
         safe_name = os.path.basename(filename)
@@ -1326,6 +1352,7 @@ class ProjectManager:
 
         return {"success": True, "saved_at": now_iso(), "count": len(annotations_list)}
 
+    @_locked
     def record_last_image(self, filename):
         ctx = self.get_active_context()
         safe_name = os.path.basename(filename)
@@ -1341,6 +1368,7 @@ class ProjectManager:
                 manifest["last_image"] = safe_name
                 self._write_manifest(ctx["project_dir"], manifest)
 
+    @_locked
     def delete_image(self, filename):
         """Permanently delete an image and its associated .txt/.json files from the active project."""
         raw_name = (filename or "").strip()
@@ -1451,42 +1479,45 @@ class ProjectManager:
             "remaining_images": len(remaining),
         }
 
-    def restore_deleted_image(self):
+    def restore_deleted_image(self, update_last_image=True):
         """Restore the most recently deleted image and its .txt/.json files for the active project."""
-        ctx = self.get_active_context()
-        stack = self.deleted_backups.get(ctx["id"]) or []
-        if not stack:
-            raise ValueError("Không có ảnh vừa xóa nào để khôi phục.")
+        with self._lock:
+            ctx = self.get_active_context()
+            stack = self.deleted_backups.get(ctx["id"]) or []
+            if not stack:
+                raise ValueError("Không có ảnh vừa xóa nào để khôi phục.")
 
-        backup = stack.pop()
-        safe_name = backup["image_name"]
-        restored_files = []
-        for abs_p, raw_bytes in backup["files"]:
-            os.makedirs(os.path.dirname(abs_p), exist_ok=True)
-            with open(abs_p, "wb") as wf:
-                wf.write(raw_bytes)
-            restored_files.append(abs_p)
+            backup = stack.pop()
+            safe_name = backup["image_name"]
+            restored_files = []
+            for abs_p, raw_bytes in backup["files"]:
+                os.makedirs(os.path.dirname(abs_p), exist_ok=True)
+                with open(abs_p, "wb") as wf:
+                    wf.write(raw_bytes)
+                restored_files.append(abs_p)
 
-        if ctx["is_default"]:
-            self.registry["default_last_image"] = safe_name
-            self._save_registry()
-        else:
-            manifest = ctx["manifest"]
-            if manifest:
-                if backup.get("split") is not None:
-                    manifest.setdefault("splits", {})[safe_name] = backup["split"]
-                if backup.get("orig_rel") is not None:
-                    manifest.setdefault("original_rel_paths", {})[safe_name] = backup["orig_rel"]
-                manifest["last_image"] = safe_name
-                manifest["updated_at"] = now_iso()
-                self._write_manifest(ctx["project_dir"], manifest)
-                self._upsert_registry_entry(manifest)
+            if ctx["is_default"]:
+                if update_last_image:
+                    self.registry["default_last_image"] = safe_name
+                    self._save_registry()
+            else:
+                manifest = ctx["manifest"]
+                if manifest:
+                    if backup.get("split") is not None:
+                        manifest.setdefault("splits", {})[safe_name] = backup["split"]
+                    if backup.get("orig_rel") is not None:
+                        manifest.setdefault("original_rel_paths", {})[safe_name] = backup["orig_rel"]
+                    if update_last_image:
+                        manifest["last_image"] = safe_name
+                    manifest["updated_at"] = now_iso()
+                    self._write_manifest(ctx["project_dir"], manifest)
+                    self._upsert_registry_entry(manifest)
 
-        return {
-            "success": True,
-            "restored_image": safe_name,
-            "restored_files": restored_files,
-        }
+            return {
+                "success": True,
+                "restored_image": safe_name,
+                "restored_files": restored_files,
+            }
 
     def _resolve_export_dir(self, ctx, output_dir):
         target = os.path.abspath((output_dir or "").strip() or ctx["dataset_dir"])
@@ -1540,6 +1571,7 @@ class ProjectManager:
             print(f"[!] Error reading {ann_path}: {e}")
             return []
 
+    @_locked
     def export_single_image(self, image_name, export_format="both", class_names=None):
         ctx = self.get_active_context()
         fmt = (export_format or "both").strip().lower()
@@ -1571,6 +1603,7 @@ class ProjectManager:
             "count": len(ann_items),
         }
 
+    @_locked
     def export_dataset(self, export_format="txt", layout="split", output_dir=None, class_names=None):
         ctx = self.get_active_context()
         fmt = (export_format or "txt").strip().lower()
@@ -1594,6 +1627,16 @@ class ProjectManager:
         want_json = fmt in ("json", "both")
         is_default_target = os.path.normcase(target_dir) == os.path.normcase(ctx["dataset_dir"])
         sync_project_labels = want_txt and is_default_target and (export_classes == ctx["classes"])
+
+        # Validate & measure all images before modifying any target subdirectories
+        image_dims = {}
+        for img_name in images:
+            src_img = os.path.join(images_dir, img_name)
+            try:
+                with Image.open(src_img) as im:
+                    image_dims[img_name] = im.size
+            except Exception as e:
+                raise ValueError(f"Ảnh '{img_name}' bị lỗi không thể đọc ({e}). Hãy loại bỏ ảnh này trước khi xuất.")
 
         if lay == "split":
             for split in ("train", "val", "test"):
@@ -1637,8 +1680,7 @@ class ProjectManager:
         for img_name in images:
             src_img = os.path.join(images_dir, img_name)
             stem = os.path.splitext(img_name)[0]
-            with Image.open(src_img) as im:
-                w, h = im.size
+            w, h = image_dims[img_name]
 
             ann_items = self._read_image_annotations(ann_dir, img_name)
             for item in ann_items:
