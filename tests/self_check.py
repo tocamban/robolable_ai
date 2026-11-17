@@ -203,6 +203,38 @@ def check_project_manager(tmp):
     reopened = mgr.open_existing_project_folder(pdir)
     assert reopened["active_project"]["id"] == pid
 
+    # Delete image from project: removes image, .json, .txt, and dataset export copies + updates manifest
+    assert os.path.exists(os.path.join(pdir, "images", "sample.jpg"))
+    assert os.path.exists(os.path.join(pdir, "annotations", "sample.jpg.json"))
+    assert os.path.exists(os.path.join(pdir, "labels", "sample.txt"))
+    assert os.path.exists(os.path.join(pdir, "dataset", "images", "train", "sample.jpg"))
+    assert os.path.exists(os.path.join(pdir, "dataset", "labels", "train", "sample.txt"))
+    del_proj_res = mgr.delete_image("sample.jpg")
+    assert del_proj_res["success"] is True and del_proj_res["remaining_images"] == 0
+    assert not os.path.exists(os.path.join(pdir, "images", "sample.jpg"))
+    assert not os.path.exists(os.path.join(pdir, "annotations", "sample.jpg.json"))
+    assert not os.path.exists(os.path.join(pdir, "labels", "sample.txt"))
+    assert not os.path.exists(os.path.join(pdir, "dataset", "images", "train", "sample.jpg"))
+    assert not os.path.exists(os.path.join(pdir, "dataset", "labels", "train", "sample.txt"))
+    ctx_after_del = mgr.get_active_context()
+    assert "sample.jpg" not in (ctx_after_del["manifest"].get("splits") or {})
+    assert ctx_after_del["manifest"].get("last_image") == ""
+
+    rest_proj_res = mgr.restore_deleted_image()
+    assert rest_proj_res["success"] is True and rest_proj_res["restored_image"] == "sample.jpg"
+    assert os.path.exists(os.path.join(pdir, "images", "sample.jpg"))
+    assert os.path.exists(os.path.join(pdir, "annotations", "sample.jpg.json"))
+    assert os.path.exists(os.path.join(pdir, "labels", "sample.txt"))
+    assert os.path.exists(os.path.join(pdir, "dataset", "images", "train", "sample.jpg"))
+    assert os.path.exists(os.path.join(pdir, "dataset", "labels", "train", "sample.txt"))
+    ctx_after_rest = mgr.get_active_context()
+    assert ctx_after_rest["manifest"].get("splits", {}).get("sample.jpg") == "train"
+    assert ctx_after_rest["manifest"].get("last_image") == "sample.jpg"
+
+    del_proj_again = mgr.delete_image("sample.jpg")
+    assert del_proj_again["success"] is True and del_proj_again["remaining_images"] == 0
+    assert not os.path.exists(os.path.join(pdir, "images", "sample.jpg"))
+
 
 def _img_bytes():
     buf = io.BytesIO()
@@ -221,7 +253,8 @@ def check_flask_routes(tmp):
     robolabel_app.pm = pm_mod.ProjectManager(base_dir)
     client = robolabel_app.app.test_client()
     try:
-        assert client.get("/").status_code == 200
+        index_resp = client.get("/")
+        assert index_resp.status_code == 200 and b"labelScale" in index_resp.data
         assert client.get("/api/system_info").status_code == 200
         assert len(client.get("/api/models").get_json()) >= 2
         assert "classes" in client.get("/api/classes").get_json()
@@ -275,6 +308,44 @@ def check_flask_routes(tmp):
 
         assert client.post("/api/export_image", json={"image_name": "../bad.jpg", "format": "json"}).status_code == 400
         assert client.post("/api/export_image", json={"image_name": "missing.jpg", "format": "json"}).status_code == 404
+
+        # Delete unqualified image (+ .json and .txt cleanup)
+        assert client.post("/api/delete_image", json={"image_name": "../bad.jpg"}).status_code == 400
+        assert client.post("/api/delete_image", json={"image_name": "bad.txt"}).status_code == 400
+        assert client.post("/api/delete_image", json={"image_name": "missing.jpg"}).status_code == 404
+
+        del_up = client.post("/api/upload", data={"file": (_img_bytes(), "del_me.jpg")})
+        assert del_up.status_code == 200
+        del_save = client.post(
+            "/api/annotations/del_me.jpg",
+            json={"annotations": [{"class_name": "ripe", "type": "polygon", "polygon": [[4, 4], [20, 4], [20, 20]]}]},
+        )
+        assert del_save.status_code == 200
+        del_ctx = robolabel_app.pm.get_active_context()
+        del_img_path = os.path.join(del_ctx["images_dir"], "del_me.jpg")
+        del_json_path = os.path.join(del_ctx["annotations_dir"], "del_me.jpg.json")
+        del_txt_path = os.path.join(del_ctx["labels_dir"], "del_me.txt")
+        assert os.path.exists(del_img_path) and os.path.exists(del_json_path) and os.path.exists(del_txt_path)
+
+        del_resp = client.post("/api/delete_image", json={"image_name": "del_me.jpg"})
+        del_json = del_resp.get_json()
+        assert del_resp.status_code == 200 and del_json["success"] is True and del_json["deleted_image"] == "del_me.jpg"
+        assert not os.path.exists(del_img_path)
+        assert not os.path.exists(del_json_path)
+        assert not os.path.exists(del_txt_path)
+        assert all(it["filename"] != "del_me.jpg" for it in client.get("/api/images").get_json())
+
+        rest_resp = client.post("/api/restore_image", json={})
+        rest_json = rest_resp.get_json()
+        assert rest_resp.status_code == 200 and rest_json["success"] is True and rest_json["restored_image"] == "del_me.jpg"
+        assert os.path.exists(del_img_path) and os.path.exists(del_json_path) and os.path.exists(del_txt_path)
+        restored_anns = client.get("/api/annotations/del_me.jpg").get_json()["annotations"]
+        assert len(restored_anns) == 1 and restored_anns[0]["class_name"] == "ripe"
+
+        assert client.post("/api/delete_image", json={"image_name": "del_me.jpg"}).status_code == 200
+        assert client.post("/api/restore_image", json={}).status_code == 200
+        assert client.post("/api/restore_image", json={}).status_code == 400
+        assert client.post("/api/delete_image", json={"image_name": "del_me.jpg"}).status_code == 200
 
         # Device & polygon editing
         bad_dev = client.post("/api/set_device", json={"device": "invalid"})

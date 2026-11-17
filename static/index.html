@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RoboLabel AI v1.3 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
+  <title>RoboLabel AI v1.4 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
@@ -518,7 +518,7 @@
 
     .thumb-badge {
       position: absolute;
-      top: 12px;
+      top: 58px;
       right: 12px;
       background: #22c55e;
       color: white;
@@ -529,6 +529,32 @@
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .thumb-delete-btn {
+      position: absolute;
+      top: 11px;
+      right: 11px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      background: rgba(15, 23, 42, 0.72);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 2;
+      transition: background 0.15s, transform 0.15s;
+    }
+
+    .thumb-delete-btn:hover {
+      background: #ef4444;
+      transform: scale(1.08);
     }
 
     /* Modal Overlay */
@@ -1566,7 +1592,7 @@
       </div>
     </div>
     <div class="top-right">
-      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.3 • Nhấn để xem điểm mới bản cập nhật">v1.3</span>
+      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.4 • Nhấn để xem điểm mới bản cập nhật">v1.4</span>
       <button type="button" class="btn-guide-header" id="btnOpenGuide" onclick="openGuideModal('overview')" title="Xem hướng dẫn sử dụng giao diện & công cụ (Phím ? hoặc F1)">
         <i class="fa-solid fa-book-open"></i> Hướng dẫn
       </button>
@@ -2155,7 +2181,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-book-open"></i>
           <span>Hướng dẫn sử dụng giao diện RoboLabel AI</span>
-          <span class="app-version-pill">v1.3</span>
+          <span class="app-version-pill">v1.4</span>
         </div>
         <button class="modal-close" onclick="closeGuideModal()" aria-label="Đóng hướng dẫn">&times;</button>
       </div>
@@ -2214,7 +2240,7 @@
               <rect x="328" y="13" width="82" height="24" rx="12" fill="#dcfce7"/>
               <text x="369" y="29" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">Đã lưu tự động</text>
               <rect x="480" y="15" width="38" height="20" rx="10" fill="#dcfce7" stroke="#86efac"/>
-              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.3</text>
+              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.4</text>
               <rect x="524" y="13" width="66" height="24" rx="12" fill="#eef2ff" stroke="#c7d2fe"/>
               <text x="557" y="29" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338ca">Hướng dẫn</text>
               <rect x="596" y="13" width="92" height="24" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
@@ -3004,7 +3030,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-rocket" style="color:var(--primary);"></i>
           <span>Điểm mới trên bản cập nhật RoboLabel AI</span>
-          <span class="app-version-pill">v1.3</span>
+          <span class="app-version-pill">v1.4</span>
         </div>
         <button class="modal-close" onclick="closeReleaseNotesModal()" aria-label="Đóng thông báo cập nhật">&times;</button>
       </div>
@@ -3013,35 +3039,35 @@
         <div class="guide-intro-banner" style="padding:10px 12px;">
           <i class="fa-solid fa-circle-info" style="font-size:17px; color:#6d28d9; flex-shrink:0;"></i>
           <div>
-            Chào mừng bạn đến với <b>RoboLabel AI v1.3</b>! Bản cập nhật này bổ sung kiểm tra và tự động xử lý lỗi vẽ đè (chồng lấn) giữa các polygon giúp dữ liệu phân đoạn sạch chuẩn hơn.
+            Chào mừng bạn đến với <b>RoboLabel AI v1.4</b>! Bản cập nhật này bổ sung thao tác loại bỏ nhanh ảnh không đạt với khả năng hoàn tác <code>Ctrl + Z</code> và phông nhãn co giãn tự động theo mức phóng to/thu nhỏ ảnh.
           </div>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:9px; font-size:12px; color:#334155; line-height:1.5;">
-          <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:9px; padding:10px 12px;">
-            <div style="font-weight:700; color:#c2410c; margin-bottom:3px;">
-              <i class="fa-solid fa-triangle-exclamation"></i> 1. Tự động phát hiện polygon vẽ đè (&gt; 2 px²)
+          <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#b91c1c; margin-bottom:3px;">
+              <i class="fa-solid fa-circle-xmark"></i> 1. Loại bỏ nhanh ảnh lỗi bằng nút &times; &amp; khôi phục bằng Ctrl + Z
             </div>
             <div>
-              Khi mở ảnh hoặc ngay sau khi vẽ/sửa xong, hệ thống tự kiểm tra các cặp nhãn (cho phép chạm sát biên, bỏ qua sai số &le; 2 px²), hiện khung cảnh báo ở góc trên Canvas, gắn icon cảnh báo cạnh tên ảnh ở thanh bên và đánh dấu dòng bị trùng trong <i>Current Objects</i>.
+              Ở cột danh sách ảnh bên phải (<i>Images</i>), bấm nút <b>&times;</b> để xóa ngay ảnh không đạt cùng file <code>.txt</code> và <code>.json</code> tương ứng mà không hiện hộp thoại hỏi lại. Nếu bấm nhầm, nhấn <span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span> để khôi phục nguyên vẹn ảnh và nhãn vừa xóa.
             </div>
           </div>
 
           <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#6d28d9; margin-bottom:3px;">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> 2. Nút "Tự sửa" (Shapely Boolean Difference) theo thứ tự ưu tiên
+              <i class="fa-solid fa-magnifying-glass-plus"></i> 2. Phông chữ nhãn nhỏ gọn &amp; tự co giãn theo mức Zoom
             </div>
             <div>
-              Bấm <b>Tự sửa</b> để cắt bỏ phần giao nhau khỏi đối tượng bị đè theo ưu tiên: <b>1.</b> <code>calyx</code> &rarr; <b>2.</b> <code>stem</code> &rarr; <b>3.</b> thân quả (<code>ripe</code>, <code>almost_ripe</code>, <code>unripe</code>). Hai nhãn cùng cấp ưu tiên sẽ giữ nguyên polygon vẽ sau và cắt polygon vẽ trước.
+              Chữ nhãn hiển thị trên ảnh được thu nhỏ gọn hơn và tự động co giãn tỷ lệ theo mức phóng to/thu nhỏ, giúp quan sát viền polygon và kéo đỉnh chi tiết không bị che khuất.
             </div>
           </div>
 
           <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#15803d; margin-bottom:3px;">
-              <i class="fa-solid fa-object-ungroup"></i> 3. Tách mảnh rời (MultiPolygon) giữ nguyên Group ID &amp; Label
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 3. Phát hiện &amp; Tự sửa vùng vẽ đè Polygon (&gt; 2 px²) bằng Shapely
             </div>
             <div>
-              Nếu phép cắt làm một polygon tách thành nhiều mảnh rời nhau (vd: đài hoa cắt ngang cuống), mỗi mảnh được lưu thành polygon độc lập nhưng giữ nguyên <code>group_id</code> và <code>label</code> gốc, đồng thời tự lưu ngay xuống file JSON.
+              Tự động cảnh báo các cặp nhãn giao nhau <code>&gt; 2 px²</code> và cắt tỉa bằng nút <b>Tự sửa</b> theo ưu tiên <code>calyx</code> &rarr; <code>stem</code> &rarr; thân quả, tách <code>MultiPolygon</code> vẫn giữ nguyên <code>group_id</code> &amp; <code>label</code>.
             </div>
           </div>
         </div>
@@ -3065,7 +3091,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v1.3";
+    const APP_VERSION = "v1.4";
     const SEEN_VERSION_KEY = "robolabel_seen_version";
 
     // State
@@ -3111,10 +3137,13 @@
 
     // History stack for Undo
     let historyStack = [];
+    let deletedImageStack = [];
+    let pendingImageUndoCount = 0;
 
     function pushHistory() {
       historyStack.push(JSON.parse(JSON.stringify(annotations)));
       if (historyStack.length > 30) historyStack.shift();
+      pendingImageUndoCount = 0;
     }
 
     function toggleAutoClassify(cb) {
@@ -3702,11 +3731,56 @@
         d.innerHTML = `
           <img src="${safeUrl}" alt="${escapeHtml(img.filename)}">
           ${splitBadge}
+          <button type="button" class="thumb-delete-btn" title="Loại bỏ ảnh không đạt (${escapeHtml(img.filename)})" aria-label="Loại bỏ ảnh ${escapeHtml(img.filename)}">&times;</button>
           <div class="thumb-name" title="${escapeHtml(img.filename)}">${overlapIcon}<span class="thumb-name-text">${escapeHtml(img.filename)}</span></div>
           ${img.annotations_count > 0 ? `<div class="thumb-badge">${img.annotations_count}</div>` : ''}
         `;
+        const delBtn = d.querySelector(".thumb-delete-btn");
+        if (delBtn) {
+          delBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteImageItem(img.filename);
+          };
+        }
         el.appendChild(d);
       });
+    }
+
+    async function deleteImageItem(filename) {
+      if (!filename) return;
+
+      const wasCurrent = (filename === currentImageName);
+      const curIdx = images.findIndex(i => i.filename === filename);
+      const nextTarget = wasCurrent
+        ? ((images[curIdx + 1] && images[curIdx + 1].filename) || (images[curIdx - 1] && images[curIdx - 1].filename) || "")
+        : "";
+
+      if (queuedSavePayload && queuedSavePayload.imageName === filename) {
+        queuedSavePayload = null;
+      }
+      await flushPendingSave();
+
+      try {
+        const { res, data } = await postJson("/api/delete_image", { image_name: filename });
+        if (!res.ok || !data.success) {
+          showToast(data.error || "Không thể xóa ảnh");
+          return;
+        }
+        deletedImageStack.push({ filename, wasCurrent });
+        if (deletedImageStack.length > 20) deletedImageStack.shift();
+        pendingImageUndoCount++;
+        if (wasCurrent) {
+          currentImageName = "";
+          await loadImages(nextTarget || null);
+        } else {
+          images = images.filter(i => i.filename !== filename);
+          renderThumbnails();
+        }
+        showToast(`Đã loại bỏ '${filename}' (Nhấn Ctrl+Z để khôi phục)`);
+      } catch (e) {
+        console.error("Delete image error:", e);
+        showToast("Lỗi kết nối khi loại bỏ ảnh");
+      }
     }
 
     function updateOverlapAlertUI() {
@@ -3787,6 +3861,7 @@
 
         historyStack.push(prevSnapshot);
         if (historyStack.length > 30) historyStack.shift();
+        pendingImageUndoCount = 0;
         annotations = data.annotations || [];
         currentOverlaps = data.overlaps || [];
         selectedAnnotationIndex = null;
@@ -4096,7 +4171,26 @@
       redraw();
     }
 
-    function undoAnnotation() {
+    async function undoAnnotation() {
+      if ((pendingImageUndoCount > 0 || historyStack.length === 0) && deletedImageStack.length > 0) {
+        const entry = deletedImageStack.pop();
+        pendingImageUndoCount = Math.max(0, pendingImageUndoCount - 1);
+        try {
+          const { res, data } = await postJson("/api/restore_image", {});
+          if (!res.ok || !data.success) {
+            showToast(data.error || "Không thể khôi phục ảnh vừa xóa");
+            return;
+          }
+          const target = (entry.wasCurrent || !currentImageName) ? data.restored_image : currentImageName;
+          await loadImages(target);
+          showToast(`Đã khôi phục ảnh '${data.restored_image}' cùng file .txt và .json!`);
+        } catch (e) {
+          console.error("Restore image error:", e);
+          showToast("Lỗi kết nối khi khôi phục ảnh");
+        }
+        return;
+      }
+
       if (historyStack.length > 0) {
         annotations = historyStack.pop();
         if (selectedAnnotationIndex !== null && selectedAnnotationIndex >= annotations.length) {
@@ -4401,6 +4495,7 @@
           if (vertexMoved && preVertexDragSnapshot) {
             historyStack.push(preVertexDragSnapshot);
             if (historyStack.length > 30) historyStack.shift();
+            pendingImageUndoCount = 0;
             saveAnnotations();
           }
           preVertexDragSnapshot = null;
@@ -4663,20 +4758,27 @@
             ctx.fill();
           }
 
-          // Label badge
-          ctx.font = isSelected ? "bold 13px sans-serif" : "bold 12px sans-serif";
+          // Label badge (nhỏ gọn, tự động co giãn theo mức zoom)
+          const z = Math.max(0.2, zoomLevel || 1.0);
+          const labelScale = z >= 1 ? (1 / z) : (1 / Math.sqrt(Math.max(0.35, z)));
+          const fontSize = Math.round((isSelected ? 8.5 : 7.5) * labelScale * 10) / 10;
+          ctx.font = `bold ${fontSize}px sans-serif`;
           const kindTag = (ann.type === "bbox") ? "[BOX] " : "";
           const groupTag = annHasGid ? `[ID:${ann.group_id}] ` : "";
           const labelText = isSelected
             ? `★ ${groupTag}${kindTag}${ann.class_name} #${idx + 1}`
             : `${groupTag}${kindTag}${ann.class_name} #${idx + 1}`;
           const tx = ann.polygon[0][0];
-          const ty = Math.max(16, ann.polygon[0][1] - 6);
-          ctx.lineWidth = 3;
+          const ty = Math.max(fontSize + 2 * labelScale, ann.polygon[0][1] - 4 * labelScale);
+          ctx.save();
+          ctx.lineJoin = "round";
+          ctx.miterLimit = 2;
+          ctx.lineWidth = Math.max(0.4, 1.8 * labelScale);
           ctx.strokeStyle = "rgba(255,255,255,0.9)";
           ctx.strokeText(labelText, tx, ty);
           ctx.fillStyle = isSelected ? "#7c3aed" : color;
           ctx.fillText(labelText, tx, ty);
+          ctx.restore();
 
           // Draw vertex handles for selected object
           if (isSelected) {
@@ -5118,6 +5220,8 @@
 
       currentImageName = "";
       annotations = [];
+      deletedImageStack = [];
+      pendingImageUndoCount = 0;
       resetInteractionState();
 
       await loadClasses();

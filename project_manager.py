@@ -775,6 +775,7 @@ class ProjectManager:
         self.default_annotations = os.path.join(self.base_dir, "annotations")
         self.default_dataset = os.path.join(self.base_dir, "dataset")
         self.upload_sessions = {}
+        self.deleted_backups = {}
 
         os.makedirs(self.default_uploads, exist_ok=True)
         os.makedirs(self.default_annotations, exist_ok=True)
@@ -1339,6 +1340,153 @@ class ProjectManager:
             if manifest and manifest.get("last_image") != safe_name:
                 manifest["last_image"] = safe_name
                 self._write_manifest(ctx["project_dir"], manifest)
+
+    def delete_image(self, filename):
+        """Permanently delete an image and its associated .txt/.json files from the active project."""
+        raw_name = (filename or "").strip()
+        safe_name = os.path.basename(raw_name)
+        if not safe_name or safe_name != raw_name or not is_image_file(safe_name):
+            raise ValueError("Tên ảnh không hợp lệ.")
+
+        ctx = self.get_active_context()
+        images_dir = ctx["images_dir"]
+        img_path = os.path.join(images_dir, safe_name)
+        if not os.path.isfile(img_path):
+            raise FileNotFoundError(f"Không tìm thấy ảnh: {safe_name}")
+
+        stem = os.path.splitext(safe_name)[0]
+        other_shares_stem = any(
+            f != safe_name and is_image_file(f) and os.path.splitext(f)[0].lower() == stem.lower()
+            for f in os.listdir(images_dir)
+        )
+
+        candidates = [
+            img_path,
+            os.path.join(ctx["annotations_dir"], f"{safe_name}.json"),
+            os.path.join(images_dir, f"{safe_name}.json"),
+            os.path.join(ctx["labels_dir"], f"{safe_name}.txt"),
+        ]
+        if not other_shares_stem:
+            candidates.extend([
+                os.path.join(ctx["annotations_dir"], f"{stem}.json"),
+                os.path.join(images_dir, f"{stem}.json"),
+            ])
+            txt_name = f"{stem}.txt"
+            allow_stem_txt = txt_name.lower() not in IGNORED_TXT_NAMES
+            if allow_stem_txt:
+                candidates.extend([
+                    os.path.join(ctx["labels_dir"], txt_name),
+                    os.path.join(ctx["annotations_dir"], txt_name),
+                    os.path.join(images_dir, txt_name),
+                ])
+            dataset_dir = ctx.get("dataset_dir", "")
+            if dataset_dir and os.path.isdir(dataset_dir):
+                candidates.extend([
+                    os.path.join(dataset_dir, safe_name),
+                    os.path.join(dataset_dir, f"{safe_name}.json"),
+                    os.path.join(dataset_dir, f"{stem}.json"),
+                ])
+                if allow_stem_txt:
+                    candidates.append(os.path.join(dataset_dir, txt_name))
+                for split in ("train", "val", "test"):
+                    candidates.extend([
+                        os.path.join(dataset_dir, "images", split, safe_name),
+                        os.path.join(dataset_dir, "annotations_json", split, f"{stem}.json"),
+                        os.path.join(dataset_dir, "annotations_json", split, f"{safe_name}.json"),
+                    ])
+                    if allow_stem_txt:
+                        candidates.append(os.path.join(dataset_dir, "labels", split, txt_name))
+
+        removed_files = []
+        file_backups = []
+        seen_paths = set()
+        for path in candidates:
+            abs_p = os.path.abspath(path)
+            key = os.path.normcase(abs_p)
+            if key in seen_paths:
+                continue
+            seen_paths.add(key)
+            if os.path.isfile(abs_p):
+                with open(abs_p, "rb") as rf:
+                    raw_bytes = rf.read()
+                os.remove(abs_p)
+                removed_files.append(abs_p)
+                file_backups.append((abs_p, raw_bytes))
+
+        remaining = sorted([f for f in os.listdir(images_dir) if is_image_file(f)])
+        next_last = remaining[0] if remaining else ""
+        prev_split = None
+        prev_orig_rel = None
+        if ctx["is_default"]:
+            if self.registry.get("default_last_image") == safe_name:
+                self.registry["default_last_image"] = next_last
+                self._save_registry()
+        else:
+            manifest = ctx["manifest"]
+            if manifest:
+                if isinstance(manifest.get("splits"), dict):
+                    prev_split = manifest["splits"].pop(safe_name, None)
+                if isinstance(manifest.get("original_rel_paths"), dict):
+                    prev_orig_rel = manifest["original_rel_paths"].pop(safe_name, None)
+                if manifest.get("last_image") == safe_name:
+                    manifest["last_image"] = next_last
+                manifest["updated_at"] = now_iso()
+                self._write_manifest(ctx["project_dir"], manifest)
+                self._upsert_registry_entry(manifest)
+
+        stack = self.deleted_backups.setdefault(ctx["id"], [])
+        stack.append({
+            "image_name": safe_name,
+            "files": file_backups,
+            "split": prev_split,
+            "orig_rel": prev_orig_rel,
+        })
+        if len(stack) > 20:
+            stack.pop(0)
+
+        return {
+            "success": True,
+            "deleted_image": safe_name,
+            "removed_files": removed_files,
+            "remaining_images": len(remaining),
+        }
+
+    def restore_deleted_image(self):
+        """Restore the most recently deleted image and its .txt/.json files for the active project."""
+        ctx = self.get_active_context()
+        stack = self.deleted_backups.get(ctx["id"]) or []
+        if not stack:
+            raise ValueError("Không có ảnh vừa xóa nào để khôi phục.")
+
+        backup = stack.pop()
+        safe_name = backup["image_name"]
+        restored_files = []
+        for abs_p, raw_bytes in backup["files"]:
+            os.makedirs(os.path.dirname(abs_p), exist_ok=True)
+            with open(abs_p, "wb") as wf:
+                wf.write(raw_bytes)
+            restored_files.append(abs_p)
+
+        if ctx["is_default"]:
+            self.registry["default_last_image"] = safe_name
+            self._save_registry()
+        else:
+            manifest = ctx["manifest"]
+            if manifest:
+                if backup.get("split") is not None:
+                    manifest.setdefault("splits", {})[safe_name] = backup["split"]
+                if backup.get("orig_rel") is not None:
+                    manifest.setdefault("original_rel_paths", {})[safe_name] = backup["orig_rel"]
+                manifest["last_image"] = safe_name
+                manifest["updated_at"] = now_iso()
+                self._write_manifest(ctx["project_dir"], manifest)
+                self._upsert_registry_entry(manifest)
+
+        return {
+            "success": True,
+            "restored_image": safe_name,
+            "restored_files": restored_files,
+        }
 
     def _resolve_export_dir(self, ctx, output_dir):
         target = os.path.abspath((output_dir or "").strip() or ctx["dataset_dir"])

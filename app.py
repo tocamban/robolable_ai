@@ -671,6 +671,30 @@ def upload_image():
 
     return jsonify({"success": True, "filename": safe_name, "url": f"/api/image/{quote(safe_name)}?p={ctx['id']}"})
 
+
+@app.route("/api/delete_image", methods=["POST"])
+def delete_image():
+    data = request.get_json(silent=True) or {}
+    image_name = (data.get("image_name") or "").strip()
+    try:
+        return jsonify(pm.delete_image(image_name))
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except FileNotFoundError as fe:
+        return jsonify({"success": False, "error": str(fe)}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/restore_image", methods=["POST"])
+def restore_image():
+    try:
+        return jsonify(pm.restore_deleted_image())
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 def _contour_to_clean_polygon(chosen, orig_w, orig_h, eps_ratio=0.0018, min_eps=0.8):
     """Làm mượt bậc thang pixel trên contour chính và rút gọn đỉnh bằng approxPolyDP."""
     single_mask = np.zeros((orig_h, orig_w), dtype=np.uint8)
