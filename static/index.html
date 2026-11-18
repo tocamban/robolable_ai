@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RoboLabel AI v1.4 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
+  <title>RoboLabel AI v1.41 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
@@ -1594,7 +1594,7 @@
       </div>
     </div>
     <div class="top-right">
-      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.4 • Nhấn để xem điểm mới bản cập nhật">v1.4</span>
+      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.41 • Nhấn để xem điểm mới bản cập nhật">v1.41</span>
       <button type="button" class="btn-guide-header" id="btnOpenGuide" onclick="openGuideModal('overview')" title="Xem hướng dẫn sử dụng giao diện & công cụ (Phím ? hoặc F1)">
         <i class="fa-solid fa-book-open"></i> Hướng dẫn
       </button>
@@ -1758,8 +1758,11 @@
         <button class="tool-btn" id="toolLasso" onclick="setTool('lasso')" title="AI Lasso (Vẽ đường bao tự do tự nhận diện & chạy SAM)">
           <i class="fa-solid fa-bezier-curve"></i>
         </button>
-        <button class="tool-btn" id="toolManualPoly" onclick="setTool('poly_manual')" title="Vẽ Polygon Thủ Công (Click từng đỉnh để vẽ / Đắp thêm)">
+        <button class="tool-btn" id="toolManualPoly" onclick="setTool('poly_manual')" title="Vẽ Polygon Thủ Công (Click từng đỉnh để vẽ / Đắp thêm - Phím P)">
           <i class="fa-solid fa-draw-polygon"></i>
+        </button>
+        <button class="tool-btn" id="toolFreehandPoly" onclick="setTool('poly_freehand')" title="Vẽ Đường Bao Tự Do (Giữ chuột di chuyển vẽ theo viền, nhả chuột tự nối khép kín - Phím F)">
+          <i class="fa-solid fa-pencil"></i>
         </button>
         <button class="tool-btn" id="toolEraser" onclick="setTool('eraser')" title="Cục Tẩy (Xóa bớt vùng thừa polygon đang chọn - Phím tắt [ và ])">
           <i class="fa-solid fa-eraser"></i>
@@ -2183,7 +2186,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-book-open"></i>
           <span>Hướng dẫn sử dụng giao diện RoboLabel AI</span>
-          <span class="app-version-pill">v1.4</span>
+          <span class="app-version-pill">v1.41</span>
         </div>
         <button class="modal-close" onclick="closeGuideModal()" aria-label="Đóng hướng dẫn">&times;</button>
       </div>
@@ -2242,7 +2245,7 @@
               <rect x="328" y="13" width="82" height="24" rx="12" fill="#dcfce7"/>
               <text x="369" y="29" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">Đã lưu tự động</text>
               <rect x="480" y="15" width="38" height="20" rx="10" fill="#dcfce7" stroke="#86efac"/>
-              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.4</text>
+              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.41</text>
               <rect x="524" y="13" width="66" height="24" rx="12" fill="#eef2ff" stroke="#c7d2fe"/>
               <text x="557" y="29" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338ca">Hướng dẫn</text>
               <rect x="596" y="13" width="92" height="24" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
@@ -2375,7 +2378,7 @@
               </div>
               <div class="guide-legend-item">
                 <span class="guide-num-badge">4</span>
-                <div><b>Thanh Công Cụ Nổi:</b> Chứa 9 nút thao tác nhanh từ vẽ AI (Smart Box, Lasso, Point), vẽ/sửa thủ công, cục tẩy đến di chuyển &amp; Undo.</div>
+                <div><b>Thanh Công Cụ Nổi:</b> Chứa 10 nút thao tác nhanh từ vẽ AI (Smart Box, Lasso, Point), vẽ thủ công (Chấm đỉnh / Đường bao tự do), cục tẩy đến di chuyển &amp; Undo.</div>
               </div>
               <div class="guide-legend-item">
                 <span class="guide-num-badge">5</span>
@@ -2744,6 +2747,43 @@
               </div>
             </div>
 
+            <!-- Edit Card 3b: Freehand Polygon -->
+            <div class="guide-card">
+              <div class="guide-illus-box">
+                <svg viewBox="0 0 360 135" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="360" height="135" rx="8" fill="#ffffff"/>
+                  <!-- Before -->
+                  <rect x="8" y="8" width="142" height="119" rx="7" fill="#1e293b"/>
+                  <text x="16" y="23" font-size="9" font-weight="700" fill="#cbd5e1">1. Giữ &amp; di chuột theo viền</text>
+                  <path d="M 78 46 C 54 46, 46 72, 56 98 C 66 118, 92 118, 102 96 C 112 70, 102 46, 78 46 Z" fill="#dc2626"/>
+                  <path d="M 60 50 C 48 68, 50 96, 64 112 C 80 120, 98 110, 104 88" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round"/>
+                  <line x1="104" y1="88" x2="60" y2="50" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3"/>
+                  <circle cx="60" cy="50" r="3.5" fill="#ffffff" stroke="#ef4444" stroke-width="1.5"/>
+                  <circle cx="104" cy="88" r="3" fill="#38bdf8"/>
+                  <!-- Arrow -->
+                  <line x1="158" y1="67" x2="196" y2="67" stroke="#7c3aed" stroke-width="2.5"/>
+                  <polygon points="196,62 206,67 196,72" fill="#7c3aed"/>
+                  <text x="180" y="57" text-anchor="middle" font-size="8" font-weight="700" fill="#6d28d9">Nhả chuột</text>
+                  <!-- After -->
+                  <rect x="210" y="8" width="142" height="119" rx="7" fill="#1e293b"/>
+                  <text x="218" y="23" font-size="9" font-weight="700" fill="#4ade80">2. Tự nối đường bao kín</text>
+                  <path d="M 281 46 C 257 46, 249 72, 259 98 C 269 118, 295 118, 305 96 C 315 70, 305 46, 281 46 Z" fill="#dc2626"/>
+                  <path d="M 263 50 C 251 68, 253 96, 267 112 C 283 120, 301 110, 307 88 Z" fill="rgba(239,68,68,0.28)" stroke="#ef4444" stroke-width="2.2"/>
+                </svg>
+              </div>
+              <div class="guide-card-body">
+                <div class="guide-card-title">
+                  <span><i class="fa-solid fa-pencil" style="color:#7c3aed;"></i> Vẽ Đường Bao Tự Do</span>
+                  <span class="kbd-tag">F</span>
+                </div>
+                <div class="guide-card-desc">Vẽ đường bao liên tục theo chuyển động chuột mà không cần click từng đỉnh. Nhả chuột là hệ thống tự nối điểm cuối về điểm đầu thành Polygon khép kín.</div>
+                <ul class="guide-steps-list">
+                  <li>Nhấn <span class="kbd-tag">F</span> (hoặc icon cây bút), giữ chuột trái và di chuột theo đường viền.</li>
+                  <li>Thả chuột để tự động nối khép kín và lưu ngay (nhấn <span class="kbd-tag">Esc</span> nếu muốn hủy nét đang vẽ).</li>
+                </ul>
+              </div>
+            </div>
+
             <!-- Edit Card 4: Select & Vertex Drag -->
             <div class="guide-card">
               <div class="guide-illus-box">
@@ -3000,6 +3040,7 @@
             <tbody>
               <tr><td><span class="kbd-tag">S</span></td><td>Chọn nhanh công cụ <b>AI Smart Box</b> (kéo khung cho SAM tự tách viền)</td></tr>
               <tr><td><span class="kbd-tag">P</span></td><td>Chọn công cụ <b>Vẽ Polygon Thủ Công</b> (hoặc <b>Đắp thêm</b> khi đang chọn 1 object)</td></tr>
+              <tr><td><span class="kbd-tag">F</span></td><td>Chọn công cụ <b>Vẽ Đường Bao Tự Do</b> (giữ kéo theo viền, nhả chuột tự nối khép kín)</td></tr>
               <tr><td><span class="kbd-tag">E</span></td><td>Chọn <b>Cục Tẩy Polygon</b> để cắt bỏ vùng tràn</td></tr>
               <tr><td><span class="kbd-tag">[</span> / <span class="kbd-tag">]</span></td><td>Giảm / Tăng kích thước đầu <b>Cục Tẩy</b> nhanh (±5px)</td></tr>
               <tr><td><span class="kbd-tag">V</span></td><td>Chọn chế độ <b>Chọn &amp; Kéo đỉnh Polygon</b></td></tr>
@@ -3032,7 +3073,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-rocket" style="color:var(--primary);"></i>
           <span>Điểm mới trên bản cập nhật RoboLabel AI</span>
-          <span class="app-version-pill">v1.4</span>
+          <span class="app-version-pill">v1.41</span>
         </div>
         <button class="modal-close" onclick="closeReleaseNotesModal()" aria-label="Đóng thông báo cập nhật">&times;</button>
       </div>
@@ -3041,14 +3082,23 @@
         <div class="guide-intro-banner" style="padding:10px 12px;">
           <i class="fa-solid fa-circle-info" style="font-size:17px; color:#6d28d9; flex-shrink:0;"></i>
           <div>
-            Chào mừng bạn đến với <b>RoboLabel AI v1.4</b>! Bản cập nhật này bổ sung thao tác loại bỏ nhanh ảnh không đạt với khả năng hoàn tác <code>Ctrl + Z</code> và phông nhãn co giãn tự động theo mức phóng to/thu nhỏ ảnh.
+            Chào mừng bạn đến với <b>RoboLabel AI v1.41</b>! Bản cập nhật này bổ sung công cụ <b>Vẽ Đường Bao Tự Do (<span class="kbd-tag">F</span>)</b> — giữ chuột di chuyển tới đâu vẽ tới đó và tự động nối khép kín khi nhả chuột, cùng toàn bộ cải tiến từ v1.4.
           </div>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:9px; font-size:12px; color:#334155; line-height:1.5;">
+          <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#4338ca; margin-bottom:3px;">
+              <i class="fa-solid fa-pencil"></i> 1. Vẽ Đường Bao Tự Do theo chuyển động chuột (Phím F)
+            </div>
+            <div>
+              Chọn biểu tượng cây bút (hoặc nhấn <span class="kbd-tag">F</span>), giữ chuột trái và di chuột dọc theo viền vật thể; khi nhả chuột, phần mềm tự động nối điểm cuối về điểm đầu thành Polygon khép kín, lọc bớt đỉnh nhiễu và tự động lưu ngay.
+            </div>
+          </div>
+
           <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#b91c1c; margin-bottom:3px;">
-              <i class="fa-solid fa-circle-xmark"></i> 1. Loại bỏ nhanh ảnh lỗi bằng nút &times; &amp; khôi phục bằng Ctrl + Z
+              <i class="fa-solid fa-circle-xmark"></i> 2. Loại bỏ nhanh ảnh lỗi bằng nút &times; &amp; khôi phục bằng Ctrl + Z
             </div>
             <div>
               Ở cột danh sách ảnh bên phải (<i>Images</i>), bấm nút <b>&times;</b> để xóa ngay ảnh không đạt cùng file <code>.txt</code> và <code>.json</code> tương ứng mà không hiện hộp thoại hỏi lại. Nếu bấm nhầm, nhấn <span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span> để khôi phục nguyên vẹn ảnh và nhãn vừa xóa.
@@ -3057,7 +3107,7 @@
 
           <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#6d28d9; margin-bottom:3px;">
-              <i class="fa-solid fa-magnifying-glass-plus"></i> 2. Phông chữ nhãn nhỏ gọn &amp; tự co giãn theo mức Zoom
+              <i class="fa-solid fa-magnifying-glass-plus"></i> 3. Phông chữ nhãn nhỏ gọn &amp; tự co giãn theo mức Zoom
             </div>
             <div>
               Chữ nhãn hiển thị trên ảnh được thu nhỏ gọn hơn và tự động co giãn tỷ lệ theo mức phóng to/thu nhỏ, giúp quan sát viền polygon và kéo đỉnh chi tiết không bị che khuất.
@@ -3066,7 +3116,7 @@
 
           <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#15803d; margin-bottom:3px;">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> 3. Phát hiện &amp; Tự sửa vùng vẽ đè Polygon (&gt; 2 px²) bằng Shapely
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 4. Phát hiện &amp; Tự sửa vùng vẽ đè Polygon (&gt; 2 px²) bằng Shapely
             </div>
             <div>
               Tự động cảnh báo các cặp nhãn giao nhau <code>&gt; 2 px²</code> và cắt tỉa bằng nút <b>Tự sửa</b> theo ưu tiên <code>calyx</code> &rarr; <code>stem</code> &rarr; thân quả, tách <code>MultiPolygon</code> vẫn giữ nguyên <code>group_id</code> &amp; <code>label</code>.
@@ -3093,7 +3143,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v1.4";
+    const APP_VERSION = "v1.41";
     const SEEN_VERSION_KEY = "robolabel_seen_version";
 
     // State
@@ -3114,12 +3164,14 @@
     let isAutoFixingOverlap = false;
     let selectedAnnotationIndex = null; // Index của object đang chọn để sửa / tẩy / đắp
     let selectedModel = "sam2_tiny";
-    let activeTool = "smart_poly"; // 'smart_poly', 'lasso', 'poly_manual', 'eraser', 'select', 'point_ai', 'bbox', 'pan'
+    let activeTool = "smart_poly"; // 'smart_poly', 'lasso', 'poly_manual', 'poly_freehand', 'eraser', 'select', 'point_ai', 'bbox', 'pan'
     let maskFillActive = true;
     let autoClassifyEnabled = true;
     let isDrawingLasso = false;
     let lassoPoints = [];
     let manualPolyPoints = []; // [{x, y}, ...]
+    let isDrawingFreehand = false;
+    let freehandPoints = []; // [{x, y}, ...]
 
     // Eraser State
     let eraserRadius = 20;
@@ -3333,6 +3385,13 @@
       const text = document.getElementById("manualPolyStatusText");
       if (!badge || !deselectBtn || !text) return;
 
+      if (activeTool === "poly_freehand") {
+        badge.style.display = "none";
+        deselectBtn.style.display = "none";
+        text.innerHTML = `<b>Vẽ Đường Bao Tự Do:</b> Giữ chuột trái di chuyển theo đường viền • Nhả chuột để tự nối khép kín • Esc: Hủy`;
+        return;
+      }
+
       if (selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex]) {
         const ann = annotations[selectedAnnotationIndex];
         badge.style.display = "inline-block";
@@ -3506,6 +3565,91 @@
         manualPolyPoints = [];
         redraw();
         showToast("Đã hủy vẽ polygon thủ công");
+      }
+    }
+
+    function clampCanvasCoords(pt) {
+      return {
+        x: Math.max(0, Math.min(canvas.width || 0, pt.x)),
+        y: Math.max(0, Math.min(canvas.height || 0, pt.y))
+      };
+    }
+
+    function polygonAreaPts(pts) {
+      if (!pts || pts.length < 3) return 0;
+      let area2 = 0;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        area2 += (pts[j].x * pts[i].y) - (pts[i].x * pts[j].y);
+      }
+      return Math.abs(area2) * 0.5;
+    }
+
+    function pointSegmentDist(p, a, b) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+      const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
+      return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    }
+
+    function simplifyPolylineRDP(pts, epsilon) {
+      if (!pts || pts.length <= 2 || epsilon <= 0) return pts ? pts.slice() : [];
+      const keep = new Uint8Array(pts.length);
+      keep[0] = 1;
+      keep[pts.length - 1] = 1;
+      const stack = [[0, pts.length - 1]];
+      while (stack.length > 0) {
+        const [start, end] = stack.pop();
+        let maxDist = 0;
+        let maxIdx = -1;
+        for (let i = start + 1; i < end; i++) {
+          const d = pointSegmentDist(pts[i], pts[start], pts[end]);
+          if (d > maxDist) {
+            maxDist = d;
+            maxIdx = i;
+          }
+        }
+        if (maxDist > epsilon && maxIdx !== -1) {
+          keep[maxIdx] = 1;
+          stack.push([start, maxIdx], [maxIdx, end]);
+        }
+      }
+      const out = [];
+      for (let i = 0; i < pts.length; i++) {
+        if (keep[i]) out.push(pts[i]);
+      }
+      return out;
+    }
+
+    function buildClosedFreehandPolygon(rawPts, epsilon = 0.85) {
+      if (!rawPts || rawPts.length < 3) return [];
+      const simplified = simplifyPolylineRDP(rawPts, epsilon);
+      const chosen = (simplified.length >= 3 && polygonAreaPts(simplified) >= 4) ? simplified : rawPts;
+      if (chosen.length < 3 || polygonAreaPts(chosen) < 4) return [];
+      const poly = [];
+      for (const p of chosen) {
+        const rx = Math.round(p.x * 10) / 10;
+        const ry = Math.round(p.y * 10) / 10;
+        const prev = poly[poly.length - 1];
+        if (!prev || prev[0] !== rx || prev[1] !== ry) {
+          poly.push([rx, ry]);
+        }
+      }
+      if (poly.length > 1 && poly[poly.length - 1][0] === poly[0][0] && poly[poly.length - 1][1] === poly[0][1]) {
+        poly.pop();
+      }
+      if (poly.length < 3) return [];
+      return polygonAreaPts(poly.map(([x, y]) => ({ x, y }))) >= 4 ? poly : [];
+    }
+
+    function cancelFreehandPolygon(showNotice = true) {
+      if (isDrawingFreehand || freehandPoints.length > 0) {
+        isDrawingFreehand = false;
+        isDragging = false;
+        freehandPoints = [];
+        redraw();
+        if (showNotice) showToast("Đã hủy vẽ đường bao tự do");
       }
     }
 
@@ -4059,6 +4203,8 @@
       setActiveGroupId(null);
       historyStack = [];
       manualPolyPoints = [];
+      isDrawingFreehand = false;
+      freehandPoints = [];
       lassoPoints = [];
       isDrawingLasso = false;
       isErasing = false;
@@ -4424,11 +4570,15 @@
       if (activeTool === "poly_manual" && tool !== "poly_manual") {
         cancelManualPolygon();
       }
+      if (activeTool === "poly_freehand" && tool !== "poly_freehand") {
+        cancelFreehandPolygon(false);
+      }
       activeTool = tool;
       document.querySelectorAll(".tool-btn").forEach(b => b.classList.remove("active"));
       if (tool === "smart_poly") document.getElementById("toolSmartPoly")?.classList.add("active");
       if (tool === "lasso") document.getElementById("toolLasso")?.classList.add("active");
       if (tool === "poly_manual") document.getElementById("toolManualPoly")?.classList.add("active");
+      if (tool === "poly_freehand") document.getElementById("toolFreehandPoly")?.classList.add("active");
       if (tool === "eraser") document.getElementById("toolEraser")?.classList.add("active");
       if (tool === "select") document.getElementById("toolSelect")?.classList.add("active");
       if (tool === "point_ai") document.getElementById("toolPointAI")?.classList.add("active");
@@ -4442,8 +4592,9 @@
 
       const hintEl = document.getElementById("manualPolyHint");
       if (hintEl) {
-        hintEl.style.display = (tool === "poly_manual") ? "flex" : "none";
-        if (tool === "poly_manual") updateManualPolyHint();
+        const showPolyHint = (tool === "poly_manual" || tool === "poly_freehand");
+        hintEl.style.display = showPolyHint ? "flex" : "none";
+        if (showPolyHint) updateManualPolyHint();
       }
 
       updateEraserTargetDisplay();
@@ -4561,6 +4712,17 @@
           return;
         }
 
+        if (activeTool === "poly_freehand") {
+          const clamped = clampCanvasCoords(coords);
+          isDrawingFreehand = true;
+          isDragging = true;
+          dragStart = clamped;
+          dragCurrent = clamped;
+          freehandPoints = [clamped];
+          redraw();
+          return;
+        }
+
         if (activeTool === "point_ai") {
           callAISegment({ point: [coords.x, coords.y], auto_classify: autoClassifyEnabled });
           return;
@@ -4644,6 +4806,18 @@
           return;
         }
 
+        if (activeTool === "poly_freehand" && isDrawingFreehand) {
+          const clamped = clampCanvasCoords(coords);
+          dragCurrent = clamped;
+          const prevPt = freehandPoints[freehandPoints.length - 1];
+          const minStep = Math.min(6, Math.max(1.2, 3.0 * getZoomInv()));
+          if (!prevPt || Math.hypot(clamped.x - prevPt.x, clamped.y - prevPt.y) >= minStep) {
+            freehandPoints.push(clamped);
+          }
+          redraw();
+          return;
+        }
+
         if (!isDragging) return;
         if (isDrawingLasso) {
           lassoPoints.push(dragCurrent);
@@ -4676,6 +4850,36 @@
           preVertexDragSnapshot = null;
           vertexMoved = false;
           updateAnnotationUI();
+          redraw();
+          return;
+        }
+
+        if (activeTool === "poly_freehand" && isDrawingFreehand) {
+          if (e.button !== 0) return;
+          isDrawingFreehand = false;
+          isDragging = false;
+          const finalPt = clampCanvasCoords(getCanvasCoordinates(e));
+          const lastPt = freehandPoints[freehandPoints.length - 1];
+          if (!lastPt || Math.hypot(finalPt.x - lastPt.x, finalPt.y - lastPt.y) >= 1.0) {
+            freehandPoints.push(finalPt);
+          }
+          const eps = Math.min(1.5, Math.max(0.5, 0.85 * getZoomInv()));
+          const poly = buildClosedFreehandPolygon(freehandPoints, eps);
+          freehandPoints = [];
+          if (poly.length >= 3) {
+            pushHistory();
+            annotations.push(withActiveGroupId({
+              class_name: currentClass,
+              type: "polygon",
+              polygon: poly
+            }));
+            const gidNote = (currentGroupId !== null) ? ` [ID:${currentGroupId}]` : "";
+            showToast(`✅ Đã tạo đường bao tự do '${currentClass}'${gidNote} (${poly.length} đỉnh)!`);
+            updateAnnotationUI();
+            saveAnnotations();
+          } else {
+            showToast("Giữ chuột trái và di chuyển để vẽ đường bao khép kín!");
+          }
           redraw();
           return;
         }
@@ -4796,6 +5000,8 @@
           if (!e.ctrlKey) setTool("eraser");
         } else if (e.key === "p" || e.key === "P") {
           if (!e.ctrlKey) setTool("poly_manual");
+        } else if (e.key === "f" || e.key === "F") {
+          if (!e.ctrlKey) setTool("poly_freehand");
         } else if (e.key === "v" || e.key === "V") {
           if (!e.ctrlKey) setTool("select");
         } else if (e.key === "s" || e.key === "S") {
@@ -4825,7 +5031,11 @@
             }
           }
         } else if (e.key === "Escape") {
-          deselectAnnotation();
+          if (activeTool === "poly_freehand" && isDrawingFreehand) {
+            cancelFreehandPolygon(true);
+          } else {
+            deselectAnnotation();
+          }
         }
       });
     }
@@ -5093,6 +5303,62 @@
             ctx.stroke();
           }
         }
+      }
+
+      // Draw in-progress freehand polygon (solid path + dashed auto-closing line to start)
+      if (activeTool === "poly_freehand" && isDrawingFreehand && freehandPoints.length > 0) {
+        const drawColor = (CLASSES.find(c => c.name === currentClass) || {}).color || "#a855f7";
+        const invZ = getZoomInv();
+        const startPt = freehandPoints[0];
+        const tailPt = freehandPoints[freehandPoints.length - 1];
+        const endPt = (dragCurrent && dragCurrent.x !== undefined) ? dragCurrent : tailPt;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(startPt.x, startPt.y);
+        for (let i = 1; i < freehandPoints.length; i++) {
+          ctx.lineTo(freehandPoints[i].x, freehandPoints[i].y);
+        }
+        if (Math.hypot(endPt.x - tailPt.x, endPt.y - tailPt.y) >= 0.5) {
+          ctx.lineTo(endPt.x, endPt.y);
+        }
+        ctx.strokeStyle = drawColor;
+        ctx.lineWidth = 2.0 * invZ;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.stroke();
+
+        // Dashed auto-close preview back to start point
+        if (freehandPoints.length >= 2 || Math.hypot(endPt.x - startPt.x, endPt.y - startPt.y) >= 2) {
+          ctx.beginPath();
+          ctx.moveTo(endPt.x, endPt.y);
+          ctx.lineTo(startPt.x, startPt.y);
+          ctx.strokeStyle = drawColor;
+          ctx.lineWidth = 1.4 * invZ;
+          ctx.setLineDash([4 * invZ, 3 * invZ]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.beginPath();
+          ctx.moveTo(startPt.x, startPt.y);
+          for (let i = 1; i < freehandPoints.length; i++) {
+            ctx.lineTo(freehandPoints[i].x, freehandPoints[i].y);
+          }
+          ctx.lineTo(endPt.x, endPt.y);
+          ctx.closePath();
+          ctx.fillStyle = drawColor + "25";
+          ctx.fill();
+        }
+
+        // Start point anchor dot
+        ctx.beginPath();
+        ctx.arc(startPt.x, startPt.y, 2.8 * invZ, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.strokeStyle = drawColor;
+        ctx.lineWidth = 1.3 * invZ;
+        ctx.stroke();
+        ctx.restore();
       }
     }
 

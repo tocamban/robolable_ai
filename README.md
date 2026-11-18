@@ -1,12 +1,12 @@
 # RoboLabel AI — Studio Gán Nhãn & Phân Đoạn Ảnh Tự Động Cho YOLO
 
-![Version](https://img.shields.io/badge/Version-v1.4-7c3aed?style=flat-square)
+![Version](https://img.shields.io/badge/Version-v1.41-7c3aed?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%20--%203.14-3776ab?style=flat-square&logo=python&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-SAM%202.1%20%2B%20CLIP%20ViT--B%2F32-0ea5e9?style=flat-square)
 ![Export](https://img.shields.io/badge/Export-YOLO--Seg%20(.txt)%20%26%20Labelme%20(.json)-10b981?style=flat-square)
 ![Compute](https://img.shields.io/badge/Compute-NVIDIA%20CUDA%20%2F%20CPU-76b900?style=flat-square)
 
-> **Phiên bản hiện tại:** `v1.4` — Loại bỏ nhanh ảnh không đạt (kèm `.txt` & `.json`) bằng nút `×` với khôi phục `Ctrl + Z`, thu nhỏ & co giãn phông nhãn theo Zoom, cùng phát hiện/tự sửa lỗi vẽ đè Polygon.
+> **Phiên bản hiện tại:** `v1.41` — Bổ sung công cụ **Vẽ Đường Bao Tự Do (`F`)** giữ chuột vẽ theo viền và tự nối khép kín khi nhả chuột, cùng loại bỏ nhanh ảnh lỗi (`Ctrl + Z`) và phông nhãn co giãn theo Zoom.
 
 ---
 
@@ -28,6 +28,10 @@ Công cụ giúp rút ngắn tối đa thời gian vẽ thủ công khi cần g�
 | **Xuất `.txt` & `.json` tùy chọn** | Xuất **YOLO `.txt`** (tọa độ chuẩn hóa `[0, 1]`, tự lược bỏ `group_id`), **Labelme / X-AnyLabeling `.json`** (pixel tuyệt đối, giữ `group_id`), hoặc **cả hai**, chọn cấu trúc `train/val` hoặc thư mục phẳng, hỗ trợ preset `Chuẩn 5 lớp`. |
 | **Quản lý Project & Auto-Save** | Tạo nhiều Project độc lập (kéo thả thư mục hoặc chọn từ ổ đĩa), tự nhận diện dataset ảnh thuần / YOLO Box / YOLO Seg, đồng bộ Auto-Save liên tục. |
 | **Điều phối GPU CUDA / CPU** | Tự dò GPU NVIDIA (`cu126` / `cu124`), chuyển đổi linh hoạt GPU/CPU ngay trên Header, tự lùi về CPU khi tràn VRAM và tích hợp **Benchmark GPU**. |
+
+### Điểm mới nổi bật trong phiên bản `v1.41`
+
+- **Vẽ Đường Bao Tự Do theo chuyển động chuột (`F`):** Chọn biểu tượng cây bút hoặc nhấn phím **`F`**, giữ chuột trái di chuyển dọc theo viền vật thể; nét vẽ bám theo con trỏ chuột kèm đường nét đứt xem trước điểm nối về gốc, và khi nhả chuột hệ thống tự động nối khép kín thành Polygon (lọc bớt đỉnh nhiễu bằng Ramer-Douglas-Peucker, giữ `Group ID` và tự lưu ngay).
 
 ### Điểm mới nổi bật trong phiên bản `v1.4`
 
@@ -134,7 +138,7 @@ Sau khi chạy `run_app.bat`, trình duyệt sẽ mở không gian làm việc c
    - **Chọn Project:** Hiển thị Workspace / Project hiện tại (ví dụ `Workspace Mặc định`); click để mở nhanh danh sách Project.
    - **Chọn mô hình SAM:** Chuyển giữa **`SAM 2.1 (Tiny)`** (nhanh, khuyên dùng hằng ngày) và **`SAM 2.1 (Large)`** (viền chi tiết hơn).
    - **Nút `GPU / CPU`:** Xem thiết bị đang chạy (`GPU: GTX 165...` hoặc `CPU`), chuyển đổi CUDA/CPU và mở **Benchmark GPU**.
-   - **Badge phiên bản (`v1.4`) & nút `Hướng dẫn` (`?` / `F1`):** Mở thông báo điểm mới bản cập nhật (khi nhấn badge `v1.4`) hoặc bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
+   - **Badge phiên bản (`v1.41`) & nút `Hướng dẫn` (`?` / `F1`):** Mở thông báo điểm mới bản cập nhật (khi nhấn badge `v1.41`) hoặc bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
    - **`Quản lý Project` / `Xuất nhãn` / `Tải ảnh`:** Tạo hoặc mở Dataset Project, xuất nhãn tùy chọn (`.txt` / `.json`), và thêm ảnh đơn lẻ.
 2. **Cột trái (Classes & Current Objects):**
    - Công tắc **`Tự nhận diện Class`** (bật để CLIP tự đoán nhãn khi cắt bằng AI; tắt để gán đúng Class đang chọn thủ công).
@@ -142,7 +146,7 @@ Sau khi chạy `run_app.bat`, trình duyệt sẽ mở không gian làm việc c
    - Danh sách **Classes** & thống kê số nhãn trên ảnh hiện tại.
    - Danh sách **`Current Objects`** kèm ô chỉnh nhanh **`ID`** trên từng dòng và bảng thao tác đối tượng đang chọn (**`Tẩy bớt`**, **`+ Đắp thêm`**, **`Group ID vùng chọn`**).
 3. **Vùng Canvas trung tâm & Thanh công cụ dọc:**
-   - Thanh công cụ bên phải Canvas: **AI Smart Box (`S`)**, **AI Lasso**, **AI Point**, **Cục Tẩy (`E`)**, **Vẽ Polygon (`P`)**, **Bounding Box**, **Chọn & Kéo đỉnh (`V`)**, **Pan (`H`)**, **Hoàn tác (`Ctrl + Z`)**, và mở **Phím tắt (`?`)**.
+   - Thanh công cụ bên phải Canvas: **AI Smart Box (`S`)**, **AI Lasso**, **Vẽ Polygon (`P`)**, **Vẽ Đường Bao Tự Do (`F`)**, **Cục Tẩy (`E`)**, **Chọn & Kéo đỉnh (`V`)**, **AI Point**, **Bounding Box**, **Pan (`H`)**, **Hoàn tác (`Ctrl + Z`)**, và mở **Phím tắt (`?`)**.
    - Thanh dưới cùng Canvas: Thu/phóng **`- / 100% / + / RESET`** và nút bật/tắt **Mask** phủ màu bán trong suốt.
 4. **Cột trái (`Current Objects`) & Cột phải (`Images`):**
    - Danh sách `Current Objects` hiển thị từng vùng kèm đánh dấu cam nếu vùng đó đang tham gia lỗi trùng nhãn (rê chuột để xem chi tiết cặp đè và diện tích `px²`).
@@ -177,6 +181,7 @@ Khi AI tách bị lem ra ngoài hoặc cắt thiếu góc, bạn không cần x�
 - **Vẽ Polygon Thủ Công / Đắp thêm (`P`):**
   - **Nếu ĐANG chọn sẵn 1 đối tượng** *(hiện nhãn Đắp thêm vào Object đang chọn)*: chấm các đỉnh bao vùng bị thiếu rồi đóng kín → hệ thống tự **gộp (Union)** vào polygon cũ.
   - **Nếu CHƯA chọn đối tượng nào** *(bấm `Bỏ chọn` nếu muốn tạo mới)*: click đặt từng đỉnh quanh vật thể, đưa chuột lại gần điểm đầu tiên (xuất hiện vòng xanh **Snap**) rồi nhấn **`Enter`** hoặc **Double-click** để khép kín. Nhấn **Chuột phải** / **`Backspace`** / **`Delete`** để xóa đỉnh vừa đặt; **`Esc`** để hủy.
+- **Vẽ Đường Bao Tự Do (`F`):** Giữ chuột trái di chuyển liên tục dọc theo đường viền vật thể; nhả chuột để tự động nối điểm cuối về điểm đầu thành Polygon khép kín (nhấn **`Esc`** nếu muốn hủy nét đang vẽ).
 - **Chọn & Kéo đỉnh (`V`):** Click chọn đối tượng để hiện các chấm đỉnh trên viền, kéo thả từng đỉnh tới đúng vị trí (tự lưu ngay khi thả chuột).
 - **Pan (`H` hoặc giữ chuột giữa) & Zoom:** Cuộn con lăn chuột để phóng to/thu nhỏ tại vị trí con trỏ; nhấn **`Ctrl + Z`** để hoàn tác tối đa **30 bước**.
 
@@ -205,6 +210,7 @@ Khi gán nhãn nhiều bộ phận sát nhau (quả, đài hoa, cuống), các �
 | :--- | :--- |
 | **`S`** | Chọn công cụ **AI Smart Box** |
 | **`P`** | Chọn **Vẽ Polygon Thủ Công** (hoặc **Đắp thêm** nếu đang chọn object) |
+| **`F`** | Chọn **Vẽ Đường Bao Tự Do** (giữ kéo theo viền, nhả chuột tự nối khép kín) |
 | **`E`** | Chọn **Cục Tẩy Polygon** |
 | **`[`** / **`]`** | Giảm / Tăng kích thước Cục Tẩy (±5px) |
 | **`V`** | Chọn chế độ **Chọn & Kéo đỉnh Polygon** |

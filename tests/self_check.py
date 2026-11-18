@@ -3,6 +3,9 @@
 import io
 import json
 import os
+import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import zipfile
@@ -646,12 +649,50 @@ def check_overlap_detection_and_autofix(tmp):
         robolabel_app.pm = orig_pm
 
 
+def check_freehand_polygon_ui():
+    html_path = os.path.join(ROOT_DIR, "static", "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    for marker in ("toolFreehandPoly", "setTool('poly_freehand')", "buildClosedFreehandPolygon", "isDrawingFreehand"):
+        assert marker in html, f"missing freehand marker: {marker}"
+
+    scripts = re.findall(r"<script[^>]*>([\s\S]*?)</script>", html)
+    main_script = max(scripts, key=len)
+    node_exe = shutil.which("node")
+    if node_exe:
+        js_check = r"""
+const fs = require("fs");
+const vm = require("vm");
+const html = fs.readFileSync(process.argv[1], "utf8");
+const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+const scriptSrc = scripts.sort((a, b) => b.length - a.length)[0];
+new vm.Script(scriptSrc);
+const helperSrc = scriptSrc.match(/function clampCanvasCoords[\s\S]*?function cancelFreehandPolygon[\s\S]*?\n    \}/)[0];
+const ctx = { canvas: { width: 200, height: 150 }, isDrawingFreehand: false, isDragging: false, freehandPoints: [], redraw: () => {}, showToast: () => {} };
+vm.runInNewContext(helperSrc, ctx);
+const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+assert(ctx.buildClosedFreehandPolygon([], 0.85).length === 0, "empty should return []");
+assert(ctx.buildClosedFreehandPolygon([{x:0,y:0},{x:50,y:0},{x:100,y:0}], 0.85).length === 0, "collinear line must be rejected");
+assert(ctx.buildClosedFreehandPolygon([{x:10,y:10},{x:11,y:10},{x:11,y:11}], 0.85).length === 0, "tiny area < 4 must be rejected");
+const loop = ctx.buildClosedFreehandPolygon([{x:10,y:10},{x:30,y:10},{x:50,y:10},{x:50,y:40},{x:10,y:40},{x:10,y:10}], 0.85);
+assert(loop.length === 4, "expected 4 simplified corners, got " + loop.length);
+assert(loop[0][0] !== loop[loop.length - 1][0] || loop[0][1] !== loop[loop.length - 1][1], "closing duplicate vertex must be stripped");
+const stem = ctx.buildClosedFreehandPolygon([{x:40,y:10},{x:45,y:10},{x:45,y:50},{x:40,y:50}], 0.85);
+assert(stem.length === 4, "thin 5x40 stem must be kept");
+const clamped = ctx.clampCanvasCoords({x: -12, y: 999});
+assert(clamped.x === 0 && clamped.y === 150, "clampCanvasCoords must clamp to canvas size");
+"""
+        proc = subprocess.run([node_exe, "-e", js_check, html_path], capture_output=True, text=True)
+        assert proc.returncode == 0, f"JS freehand check failed: {proc.stderr or proc.stdout}"
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         check_device_manager(tmp)
         check_project_manager(tmp)
         check_flask_routes(tmp)
         check_overlap_detection_and_autofix(tmp)
+        check_freehand_polygon_ui()
     print("[PASS] All RoboLabel AI self-checks passed.")
 
 
