@@ -746,6 +746,54 @@ assert(ctx.computeAnnotationScrollTop(320, 32, 100, 200, 1000, "nearest") === 15
         assert proc.returncode == 0, f"JS sidebar split/scroll check failed: {proc.stderr or proc.stdout}"
 
 
+def check_canvas_quick_id_ui():
+    html_path = os.path.join(ROOT_DIR, "static", "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    for marker in (
+        "canvasQuickIdPopover",
+        "canvasQuickIdInput",
+        "canvasQuickIdClearBtn",
+        "computeQuickIdPopoverPosition",
+        "openCanvasQuickIdPopover",
+        "commitCanvasQuickId",
+        "setupCanvasQuickIdEvents",
+    ):
+        assert marker in html, f"missing canvas quick-id marker: {marker}"
+
+    node_exe = shutil.which("node")
+    if node_exe:
+        js_check = r"""
+const fs = require("fs");
+const vm = require("vm");
+const html = fs.readFileSync(process.argv[1], "utf8");
+const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+const scriptSrc = scripts.sort((a, b) => b.length - a.length)[0];
+new vm.Script(scriptSrc);
+const posSrc = scriptSrc.match(/function computeQuickIdPopoverPosition[\s\S]*?\n    \}/)[0];
+const ctx = {};
+vm.runInNewContext(posSrc, ctx);
+const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+
+const pCenter = ctx.computeQuickIdPopoverPosition(400, 300, 190, 36, 800, 600);
+assert(pCenter.left === 305 && pCenter.top === 250, "center click should place popover above cursor");
+
+const pTop = ctx.computeQuickIdPopoverPosition(400, 20, 190, 36, 800, 600);
+assert(pTop.left === 305 && pTop.top === 34, "top-edge click should flip popover below cursor");
+
+const pRight = ctx.computeQuickIdPopoverPosition(760, 300, 190, 36, 800, 600);
+assert(pRight.left === 542 && pRight.top === 250, "right-edge click should clamp left of tool palette");
+
+const pBottom = ctx.computeQuickIdPopoverPosition(120, 580, 190, 36, 800, 600);
+assert(pBottom.left === 25 && pBottom.top === 508, "bottom-edge click should clamp above bottom toolbar");
+
+const pTiny = ctx.computeQuickIdPopoverPosition(200, 100, 190, 36, 240, 120);
+assert(pTiny.left === 10 && pTiny.top >= 10 && pTiny.top <= 28, "tiny container must clamp safely within bounds");
+"""
+        proc = subprocess.run([node_exe, "-e", js_check, html_path], capture_output=True, text=True)
+        assert proc.returncode == 0, f"JS canvas quick-id check failed: {proc.stderr or proc.stdout}"
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         check_device_manager(tmp)
@@ -754,6 +802,7 @@ def main():
         check_overlap_detection_and_autofix(tmp)
         check_freehand_polygon_ui()
         check_sidebar_split_and_scroll_ui()
+        check_canvas_quick_id_ui()
     print("[PASS] All RoboLabel AI self-checks passed.")
 
 

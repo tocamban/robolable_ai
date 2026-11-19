@@ -897,6 +897,49 @@
       border-color: var(--primary);
     }
 
+    .canvas-quick-id-popover {
+      position: absolute;
+      z-index: 8;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px 4px 10px;
+      background: rgba(255, 255, 255, 0.97);
+      border: 1.5px solid var(--primary);
+      border-radius: 20px;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.16);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .quick-id-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      max-width: 96px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .quick-id-input {
+      width: 56px;
+      padding: 2px 6px;
+      border: 1.5px solid #c4b5fd;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      color: #1e293b;
+      background: #f5f3ff;
+      outline: none;
+    }
+
+    .quick-id-input:focus {
+      border-color: var(--primary);
+      background: #ffffff;
+      box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.18);
+    }
+
     .export-choice-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1855,6 +1898,14 @@
       </div>
 
       <canvas id="annotationCanvas"></canvas>
+
+      <!-- Quick Inline Group ID Popover (on canvas selection) -->
+      <div id="canvasQuickIdPopover" class="canvas-quick-id-popover" style="display:none;" onmousedown="event.stopPropagation()">
+        <span id="canvasQuickIdLabel" class="quick-id-label">#1</span>
+        <span style="font-size:11px; font-weight:700; color:#64748b;">ID:</span>
+        <input type="text" id="canvasQuickIdInput" class="quick-id-input" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false" placeholder="Nhập số" aria-label="Nhập Group ID trực tiếp cho nhãn đang chọn">
+        <button type="button" id="canvasQuickIdClearBtn" class="pill-btn" title="Xóa Group ID" aria-label="Xóa Group ID">&times;</button>
+      </div>
 
       <!-- Floating Toolbar (Right of Canvas) -->
       <div class="tool-palette">
@@ -3495,6 +3546,7 @@
     }
 
     function deselectAnnotation() {
+      hideCanvasQuickIdPopover(false);
       selectedAnnotationIndex = null;
       updateAnnotationUI();
       redraw();
@@ -3592,6 +3644,12 @@
         const selGidInp = document.getElementById("selectedObjGroupIdInput");
         if (selGidInp) selGidInp.value = displayVal;
       }
+      if (quickIdTargetIndex === idx) {
+        const quickInp = document.getElementById("canvasQuickIdInput");
+        if (quickInp && document.activeElement !== quickInp) {
+          quickInp.value = displayVal;
+        }
+      }
     }
 
     function changeAnnotationGroupId(idx, rawVal) {
@@ -3619,6 +3677,199 @@
     function onSelectedGroupIdChange(rawVal) {
       if (selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex]) {
         changeAnnotationGroupId(selectedAnnotationIndex, rawVal);
+      }
+    }
+
+    let quickIdTargetIndex = null;
+
+    function computeQuickIdPopoverPosition(anchorX, anchorY, popW, popH, containerW, containerH) {
+      const marginLeft = 10;
+      const marginRight = 68;  // avoid floating .tool-palette on right
+      const marginTop = 10;
+      const marginBottom = 56; // avoid .bottom-toolbar at bottom
+      const gap = 14;
+      const maxLeft = Math.max(marginLeft, containerW - marginRight - popW);
+      const maxTop = Math.max(marginTop, containerH - marginBottom - popH);
+      const left = Math.max(marginLeft, Math.min(maxLeft, Math.round(anchorX - popW / 2)));
+      const aboveTop = anchorY - popH - gap;
+      const rawTop = (aboveTop >= marginTop) ? aboveTop : (anchorY + gap);
+      const top = Math.max(marginTop, Math.min(maxTop, Math.round(rawTop)));
+      return { left, top };
+    }
+
+    function getAnnotationAnchorClientPos(idx) {
+      const rect = canvas.getBoundingClientRect();
+      const ann = annotations[idx];
+      if (!ann || !ann.polygon || !ann.polygon.length || !canvas.width || !canvas.height) {
+        return {
+          clientX: rect.left + rect.width / 2,
+          clientY: rect.top + rect.height / 2
+        };
+      }
+      let minX = Infinity, maxX = -Infinity, minY = Infinity;
+      for (const pt of ann.polygon) {
+        if (pt[0] < minX) minX = pt[0];
+        if (pt[0] > maxX) maxX = pt[0];
+        if (pt[1] < minY) minY = pt[1];
+      }
+      const cx = (minX + maxX) / 2;
+      return {
+        clientX: rect.left + (cx / canvas.width) * rect.width,
+        clientY: rect.top + (minY / canvas.height) * rect.height
+      };
+    }
+
+    function hideCanvasQuickIdPopover(cancel = false) {
+      quickIdTargetIndex = null;
+      const pop = document.getElementById("canvasQuickIdPopover");
+      if (pop) pop.style.display = "none";
+      const inp = document.getElementById("canvasQuickIdInput");
+      if (inp && document.activeElement === inp) {
+        inp.blur();
+      }
+    }
+
+    function commitCanvasQuickId() {
+      const targetIdx = quickIdTargetIndex;
+      if (targetIdx === null) return;
+      quickIdTargetIndex = null;
+      const inp = document.getElementById("canvasQuickIdInput");
+      if (inp && annotations[targetIdx]) {
+        changeAnnotationGroupId(targetIdx, inp.value);
+      }
+    }
+
+    function clearCanvasQuickId() {
+      const targetIdx = quickIdTargetIndex;
+      const inp = document.getElementById("canvasQuickIdInput");
+      if (inp) inp.value = "";
+      hideCanvasQuickIdPopover(true);
+      if (targetIdx !== null && annotations[targetIdx]) {
+        changeAnnotationGroupId(targetIdx, "");
+      }
+    }
+
+    function openCanvasQuickIdPopover(idx, clientX = null, clientY = null, initialDigit = null) {
+      const ann = annotations[idx];
+      if (!ann) return;
+      const container = document.getElementById("canvasContainer");
+      const pop = document.getElementById("canvasQuickIdPopover");
+      const labelEl = document.getElementById("canvasQuickIdLabel");
+      const inp = document.getElementById("canvasQuickIdInput");
+      if (!container || !pop || !labelEl || !inp) return;
+
+      const labelText = `#${idx + 1} ${ann.class_name}`;
+      labelEl.innerText = labelText;
+      labelEl.title = labelText;
+
+      quickIdTargetIndex = idx;
+      if (initialDigit !== null) {
+        inp.value = String(initialDigit);
+      } else {
+        inp.value = hasGroupId(ann) ? String(ann.group_id) : "";
+      }
+
+      pop.style.display = "flex";
+      const popW = pop.offsetWidth || 190;
+      const popH = pop.offsetHeight || 36;
+      const fallbackPos = (clientX === null || clientY === null) ? getAnnotationAnchorClientPos(idx) : null;
+      const anchorClientX = (clientX !== null) ? clientX : fallbackPos.clientX;
+      const anchorClientY = (clientY !== null) ? clientY : fallbackPos.clientY;
+      const cRect = container.getBoundingClientRect();
+      const pos = computeQuickIdPopoverPosition(
+        anchorClientX - cRect.left,
+        anchorClientY - cRect.top,
+        popW,
+        popH,
+        container.clientWidth,
+        container.clientHeight
+      );
+      pop.style.left = `${pos.left}px`;
+      pop.style.top = `${pos.top}px`;
+
+      inp.focus({ preventScroll: true });
+      if (initialDigit !== null) {
+        inp.setSelectionRange(inp.value.length, inp.value.length);
+      } else {
+        inp.select();
+      }
+    }
+
+    function setupCanvasQuickIdEvents() {
+      const inp = document.getElementById("canvasQuickIdInput");
+      const clearBtn = document.getElementById("canvasQuickIdClearBtn");
+      if (!inp) return;
+
+      inp.addEventListener("input", () => {
+        inp.value = inp.value.replace(/\D+/g, "");
+      });
+
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commitCanvasQuickId();
+          hideCanvasQuickIdPopover(false);
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          const targetIdx = quickIdTargetIndex;
+          const origGid = (targetIdx !== null && hasGroupId(annotations[targetIdx])) ? annotations[targetIdx].group_id : null;
+          const hadEdit = normalizeGroupIdClient(inp.value) !== origGid;
+          hideCanvasQuickIdPopover(true);
+          if (!hadEdit) {
+            deselectAnnotation();
+          }
+          return;
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+          e.preventDefault();
+          hideCanvasQuickIdPopover(true);
+          undoAnnotation();
+          return;
+        }
+        const toolMap = {
+          e: "eraser",
+          p: "poly_manual",
+          f: "poly_freehand",
+          v: "select",
+          s: "smart_poly",
+          h: "pan"
+        };
+        const lower = e.key.toLowerCase();
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && toolMap[lower]) {
+          e.preventDefault();
+          commitCanvasQuickId();
+          hideCanvasQuickIdPopover(false);
+          setTool(toolMap[lower]);
+          return;
+        }
+        if ((e.key === "?" || e.key === "F1") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          commitCanvasQuickId();
+          hideCanvasQuickIdPopover(false);
+          openGuideModal("overview");
+          return;
+        }
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !/^[0-9]$/.test(e.key)) {
+          e.preventDefault();
+        }
+      });
+
+      inp.addEventListener("blur", () => {
+        if (quickIdTargetIndex !== null) {
+          commitCanvasQuickId();
+          hideCanvasQuickIdPopover(false);
+        }
+      });
+
+      if (clearBtn) {
+        clearBtn.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+        });
+        clearBtn.addEventListener("click", () => {
+          clearCanvasQuickId();
+        });
       }
     }
 
@@ -3969,6 +4220,7 @@
     // Init
     window.addEventListener("DOMContentLoaded", async () => {
       setupSidebarSplitter();
+      setupCanvasQuickIdEvents();
       renderClassList();
       await loadSystemInfo();
       await loadProjectState();
@@ -4433,6 +4685,7 @@
         pendingImageUndoCount = 0;
         annotations = data.annotations || [];
         currentOverlaps = data.overlaps || [];
+        hideCanvasQuickIdPopover(true);
         selectedAnnotationIndex = null;
 
         const cur = images.find(i => i.filename === currentImageName);
@@ -4469,6 +4722,7 @@
     }
 
     function resetInteractionState() {
+      hideCanvasQuickIdPopover(true);
       annotations = [];
       selectedAnnotationIndex = null;
       currentOverlaps = [];
@@ -4724,6 +4978,7 @@
     }
 
     function removeAnnotation(idx) {
+      hideCanvasQuickIdPopover(true);
       pushHistory();
       annotations.splice(idx, 1);
       if (selectedAnnotationIndex === idx) {
@@ -4742,6 +4997,7 @@
         return;
       }
       if (!confirm("Bạn có chắc chắn muốn xóa tất cả các nhãn của ảnh này?")) return;
+      hideCanvasQuickIdPopover(true);
       pushHistory();
       annotations = [];
       selectedAnnotationIndex = null;
@@ -4752,6 +5008,7 @@
 
     let isRestoringImage = false;
     async function undoAnnotation() {
+      hideCanvasQuickIdPopover(true);
       if ((pendingImageUndoCount > 0 || historyStack.length === 0) && deletedImageStack.length > 0) {
         if (isRestoringImage) return;
         const entry = deletedImageStack[deletedImageStack.length - 1];
@@ -4823,6 +5080,8 @@
     }
 
     function adjustZoom(delta) {
+      commitCanvasQuickId();
+      hideCanvasQuickIdPopover(false);
       zoomLevel = Math.max(0.2, Math.min(4.0, zoomLevel + delta));
       applyTransform();
       redraw();
@@ -4833,6 +5092,8 @@
     }
 
     function resetZoom() {
+      commitCanvasQuickId();
+      hideCanvasQuickIdPopover(false);
       fitCanvas();
     }
 
@@ -4844,6 +5105,8 @@
     }
 
     function setTool(tool) {
+      commitCanvasQuickId();
+      hideCanvasQuickIdPopover(false);
       if (activeTool === "poly_manual" && tool !== "poly_manual") {
         cancelManualPolygon();
       }
@@ -4895,6 +5158,8 @@
       container.addEventListener("mousedown", (e) => {
         if (e.target === container && ((activeTool === "pan" && e.button === 0) || e.button === 1)) {
           e.preventDefault();
+          commitCanvasQuickId();
+          hideCanvasQuickIdPopover(false);
           isPanning = true;
           panLastScreen = { x: e.clientX, y: e.clientY };
           canvas.style.cursor = "grabbing";
@@ -4905,6 +5170,8 @@
         // Hỗ trợ Pan bằng công cụ Pan hoặc nút chuột giữa (Middle click)
         if ((activeTool === "pan" && e.button === 0) || e.button === 1) {
           e.preventDefault();
+          commitCanvasQuickId();
+          hideCanvasQuickIdPopover(false);
           isPanning = true;
           panLastScreen = { x: e.clientX, y: e.clientY };
           canvas.style.cursor = "grabbing";
@@ -4935,6 +5202,7 @@
         }
 
         if (activeTool === "select") {
+          commitCanvasQuickId();
           // Kiểm tra xem có bấm vào đỉnh của object đang chọn không để kéo đỉnh
           if (selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex]) {
             const poly = annotations[selectedAnnotationIndex].polygon;
@@ -4942,6 +5210,7 @@
               const hitDist = 9 * getZoomInv();
               for (let i = 0; i < poly.length; i++) {
                 if (Math.hypot(coords.x - poly[i][0], coords.y - poly[i][1]) < hitDist) {
+                  hideCanvasQuickIdPopover(false);
                   isDraggingVertex = true;
                   draggingVertexIndex = i;
                   preVertexDragSnapshot = JSON.parse(JSON.stringify(annotations));
@@ -4955,7 +5224,9 @@
           // Kiểm tra xem có click vào một object nào khác không
           const found = findAnnotationAtPoint(coords);
           if (found !== -1) {
+            e.preventDefault();
             selectAnnotation(found);
+            openCanvasQuickIdPopover(found, e.clientX, e.clientY);
           } else {
             deselectAnnotation();
           }
@@ -5075,6 +5346,27 @@
           }
           vertexMoved = true;
           redraw();
+          return;
+        }
+
+        if (activeTool === "select" && !isDraggingVertex && !isPanning) {
+          if (e.target === canvas) {
+            let nextCursor = "default";
+            if (selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex] && annotations[selectedAnnotationIndex].polygon) {
+              const poly = annotations[selectedAnnotationIndex].polygon;
+              const hitDist = 9 * getZoomInv();
+              for (let i = 0; i < poly.length; i++) {
+                if (Math.hypot(coords.x - poly[i][0], coords.y - poly[i][1]) < hitDist) {
+                  nextCursor = "move";
+                  break;
+                }
+              }
+            }
+            if (nextCursor === "default" && findAnnotationAtPoint(coords) !== -1) {
+              nextCursor = "pointer";
+            }
+            canvas.style.cursor = nextCursor;
+          }
           return;
         }
 
@@ -5258,6 +5550,15 @@
         }
 
         if (["exportModal", "releaseNotesModal", "guideModal", "deviceModal", "projectModal"].some(isModalVisible)) {
+          return;
+        }
+
+        // Nhập trực tiếp số Group ID nếu đang chọn một đối tượng trên ảnh
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && /^[0-9]$/.test(e.key) &&
+            selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex] &&
+            !isDrawingFreehand && manualPolyPoints.length === 0) {
+          e.preventDefault();
+          openCanvasQuickIdPopover(selectedAnnotationIndex, null, null, e.key);
           return;
         }
 
