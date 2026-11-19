@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RoboLabel AI v1.41 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
+  <title>RoboLabel AI v1.42 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
@@ -35,6 +35,7 @@
     /* Top Navigation Bar */
     header {
       height: 48px;
+      flex-shrink: 0;
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
@@ -116,7 +117,7 @@
     .main-workspace {
       display: flex;
       flex: 1;
-      height: calc(100vh - 48px);
+      min-height: 0;
       overflow: hidden;
       position: relative;
     }
@@ -124,17 +125,77 @@
     /* Left Sidebar: Annotations */
     .sidebar-left {
       width: 282px;
+      flex-shrink: 0;
       border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
       background: #ffffff;
-      overflow-y: auto;
+      overflow: hidden;
       font-size: 13px;
     }
 
     .panel-section {
       padding: 14px 16px;
       border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-top-section {
+      flex: 0 1 auto;
+      min-height: 80px;
+      max-height: calc(100% - 258px);
+      overflow-y: auto;
+      border-bottom: none;
+    }
+
+    .sidebar-splitter {
+      flex: 0 0 10px;
+      cursor: row-resize;
+      background: #f8fafc;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      touch-action: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .sidebar-splitter::before {
+      content: "";
+      width: 36px;
+      height: 3px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      transition: background 0.15s, width 0.15s;
+    }
+
+    .sidebar-splitter:hover,
+    .sidebar-splitter:focus-visible,
+    .sidebar-splitter.dragging {
+      background: var(--primary-light);
+      border-color: #c4b5fd;
+      outline: none;
+    }
+
+    .sidebar-splitter:hover::before,
+    .sidebar-splitter:focus-visible::before,
+    .sidebar-splitter.dragging::before {
+      background: var(--primary);
+      width: 48px;
+    }
+
+    .sidebar-bottom-section {
+      flex: 1 1 0;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      border-bottom: none;
+    }
+
+    .sidebar-bottom-section > :not(#annotationList) {
+      flex-shrink: 0;
     }
 
     .section-title {
@@ -233,6 +294,8 @@
       right: 18px;
       top: 50%;
       transform: translateY(-50%);
+      max-height: calc(100% - 16px);
+      overflow-y: auto;
       background: #ffffff;
       border-radius: 12px;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
@@ -738,6 +801,21 @@
       background: #f5f3ff;
       border-color: var(--primary);
       box-shadow: 0 1px 6px rgba(124, 58, 237, 0.18);
+    }
+
+    @keyframes annLocateFlash {
+      0% {
+        background: #ede9fe;
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.45);
+      }
+      100% {
+        background: #f5f3ff;
+        box-shadow: 0 1px 6px rgba(124, 58, 237, 0.18);
+      }
+    }
+
+    .ann-item.locate-flash {
+      animation: annLocateFlash 0.65s ease-out;
     }
 
     .ann-class-select {
@@ -1557,6 +1635,32 @@
       .device-pill span { max-width: 125px; overflow: hidden; text-overflow: ellipsis; }
       .btn-guide-header, .btn-project-mgr, .btn-train { padding: 5px 8px; font-size: 11px; }
     }
+    @media (max-width: 1080px) {
+      header {
+        height: auto;
+        min-height: 48px;
+        padding: 6px 10px;
+        flex-wrap: wrap;
+        row-gap: 6px;
+      }
+      .top-left {
+        flex: 1 1 100%;
+        overflow: visible;
+        flex-wrap: wrap;
+        row-gap: 5px;
+      }
+      .image-name-badge {
+        flex: 1 1 90px;
+        min-width: 72px;
+        max-width: 240px;
+      }
+      .top-right {
+        width: 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        row-gap: 5px;
+      }
+    }
     @media (max-width: 740px) {
       .guide-card-grid, .guide-legend-grid, .guide-workflow-row {
         grid-template-columns: 1fr;
@@ -1594,7 +1698,7 @@
       </div>
     </div>
     <div class="top-right">
-      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.41 • Nhấn để xem điểm mới bản cập nhật">v1.41</span>
+      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.42 • Nhấn để xem điểm mới bản cập nhật">v1.42</span>
       <button type="button" class="btn-guide-header" id="btnOpenGuide" onclick="openGuideModal('overview')" title="Xem hướng dẫn sử dụng giao diện & công cụ (Phím ? hoặc F1)">
         <i class="fa-solid fa-book-open"></i> Hướng dẫn
       </button>
@@ -1615,8 +1719,8 @@
   <div class="main-workspace">
 
     <!-- Left Sidebar: Annotations & Classes -->
-    <div class="sidebar-left">
-      <div class="panel-section">
+    <div class="sidebar-left" id="sidebarLeft">
+      <div class="panel-section sidebar-top-section" id="classesPanelSection">
         <div class="section-title">
           <span>Annotations (<span id="sidebarAnnCount">0</span>)</span>
           <i class="fa-solid fa-sliders text-muted"></i>
@@ -1659,7 +1763,9 @@
         </div>
       </div>
 
-      <div class="panel-section" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+      <div id="sidebarSplitter" class="sidebar-splitter" role="separator" aria-orientation="horizontal" aria-label="Kéo để thay đổi kích thước giữa Classes và Current Objects" title="Kéo lên/xuống để chỉnh độ cao Classes và Current Objects (Double-click để đặt lại)" tabindex="0"></div>
+
+      <div class="panel-section sidebar-bottom-section" id="objectsPanelSection">
         <div class="section-title">
           <span>Current Objects (<span id="totalAnnCount">0</span>)</span>
           <button id="btnDeselectObj" onclick="deselectAnnotation()" style="display:none; background:none; border:none; color:var(--primary); font-size:11px; cursor:pointer; font-weight:600;">
@@ -1690,7 +1796,7 @@
           </div>
         </div>
 
-        <div id="annotationList" style="display:flex; flex-direction:column; gap:4px; flex:1; overflow-y:auto; padding-right:2px;">
+        <div id="annotationList" style="display:flex; flex-direction:column; gap:4px; flex:1 1 0; min-height:48px; overflow-y:auto; padding-right:2px;">
           <!-- Active image annotations -->
         </div>
         <button class="btn-export" onclick="clearCurrentAnnotations()" style="background:#fee2e2; color:#ef4444; border:1px solid #fecaca; margin-top:10px;">
@@ -2186,7 +2292,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-book-open"></i>
           <span>Hướng dẫn sử dụng giao diện RoboLabel AI</span>
-          <span class="app-version-pill">v1.41</span>
+          <span class="app-version-pill">v1.42</span>
         </div>
         <button class="modal-close" onclick="closeGuideModal()" aria-label="Đóng hướng dẫn">&times;</button>
       </div>
@@ -2245,7 +2351,7 @@
               <rect x="328" y="13" width="82" height="24" rx="12" fill="#dcfce7"/>
               <text x="369" y="29" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">Đã lưu tự động</text>
               <rect x="480" y="15" width="38" height="20" rx="10" fill="#dcfce7" stroke="#86efac"/>
-              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.41</text>
+              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.42</text>
               <rect x="524" y="13" width="66" height="24" rx="12" fill="#eef2ff" stroke="#c7d2fe"/>
               <text x="557" y="29" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338ca">Hướng dẫn</text>
               <rect x="596" y="13" width="92" height="24" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
@@ -3073,7 +3179,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-rocket" style="color:var(--primary);"></i>
           <span>Điểm mới trên bản cập nhật RoboLabel AI</span>
-          <span class="app-version-pill">v1.41</span>
+          <span class="app-version-pill">v1.42</span>
         </div>
         <button class="modal-close" onclick="closeReleaseNotesModal()" aria-label="Đóng thông báo cập nhật">&times;</button>
       </div>
@@ -3082,44 +3188,44 @@
         <div class="guide-intro-banner" style="padding:10px 12px;">
           <i class="fa-solid fa-circle-info" style="font-size:17px; color:#6d28d9; flex-shrink:0;"></i>
           <div>
-            Chào mừng bạn đến với <b>RoboLabel AI v1.41</b>! Bản cập nhật này bổ sung công cụ <b>Vẽ Đường Bao Tự Do (<span class="kbd-tag">F</span>)</b> — giữ chuột di chuyển tới đâu vẽ tới đó và tự động nối khép kín khi nhả chuột, cùng toàn bộ cải tiến từ v1.4.
+            Chào mừng bạn đến với <b>RoboLabel AI v1.42</b>! Bản cập nhật này hỗ trợ kéo căn chỉnh tỷ lệ giữa bảng <b>Classes</b> và <b>Current Objects</b>, tự động cuộn tới đúng nhãn đang chọn trên ảnh, và tối ưu thanh Header cho cửa sổ hẹp.
           </div>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:9px; font-size:12px; color:#334155; line-height:1.5;">
-          <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:9px; padding:10px 12px;">
-            <div style="font-weight:700; color:#4338ca; margin-bottom:3px;">
-              <i class="fa-solid fa-pencil"></i> 1. Vẽ Đường Bao Tự Do theo chuyển động chuột (Phím F)
-            </div>
-            <div>
-              Chọn biểu tượng cây bút (hoặc nhấn <span class="kbd-tag">F</span>), giữ chuột trái và di chuột dọc theo viền vật thể; khi nhả chuột, phần mềm tự động nối điểm cuối về điểm đầu thành Polygon khép kín, lọc bớt đỉnh nhiễu và tự động lưu ngay.
-            </div>
-          </div>
-
-          <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:9px; padding:10px 12px;">
-            <div style="font-weight:700; color:#b91c1c; margin-bottom:3px;">
-              <i class="fa-solid fa-circle-xmark"></i> 2. Loại bỏ nhanh ảnh lỗi bằng nút &times; &amp; khôi phục bằng Ctrl + Z
-            </div>
-            <div>
-              Ở cột danh sách ảnh bên phải (<i>Images</i>), bấm nút <b>&times;</b> để xóa ngay ảnh không đạt cùng file <code>.txt</code> và <code>.json</code> tương ứng mà không hiện hộp thoại hỏi lại. Nếu bấm nhầm, nhấn <span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span> để khôi phục nguyên vẹn ảnh và nhãn vừa xóa.
-            </div>
-          </div>
-
           <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#6d28d9; margin-bottom:3px;">
-              <i class="fa-solid fa-magnifying-glass-plus"></i> 3. Phông chữ nhãn nhỏ gọn &amp; tự co giãn theo mức Zoom
+              <i class="fa-solid fa-up-down"></i> 1. Kéo căn chỉnh bảng Classes / Current Objects &amp; Tự cuộn đến nhãn đang chọn
             </div>
             <div>
-              Chữ nhãn hiển thị trên ảnh được thu nhỏ gọn hơn và tự động co giãn tỷ lệ theo mức phóng to/thu nhỏ, giúp quan sát viền polygon và kéo đỉnh chi tiết không bị che khuất.
+              Kéo thanh ngang giữa <i>Classes</i> và <i>Current Objects</i> (hoặc nhấn <span class="kbd-tag">&uarr;</span>/<span class="kbd-tag">&darr;</span>, double-click để đặt lại; tự lưu vị trí). Khi bấm chọn một vùng trên ảnh, danh sách <i>Current Objects</i> tự cuộn mượt đến đúng dòng nhãn tương ứng và nháy sáng nổi bật.
             </div>
           </div>
 
           <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#15803d; margin-bottom:3px;">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> 4. Phát hiện &amp; Tự sửa vùng vẽ đè Polygon (&gt; 2 px²) bằng Shapely
+              <i class="fa-solid fa-window-maximize"></i> 2. Thanh Header tự thích ứng cửa sổ hẹp (&le; 1080px)
             </div>
             <div>
-              Tự động cảnh báo các cặp nhãn giao nhau <code>&gt; 2 px²</code> và cắt tỉa bằng nút <b>Tự sửa</b> theo ưu tiên <code>calyx</code> &rarr; <code>stem</code> &rarr; thân quả, tách <code>MultiPolygon</code> vẫn giữ nguyên <code>group_id</code> &amp; <code>label</code>.
+              Ở các cửa sổ kích thước nhỏ, thanh Header tự xuống 2 hàng gọn gàng để giữ hiển thị đầy đủ badge <i>Đã lưu tự động</i>, ô chọn mô hình SAM và nút <i>GPU / CPU</i> mà không bị cắt xén.
+            </div>
+          </div>
+
+          <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#4338ca; margin-bottom:3px;">
+              <i class="fa-solid fa-pencil"></i> 3. Vẽ Đường Bao Tự Do theo chuyển động chuột (Phím F)
+            </div>
+            <div>
+              Chọn biểu tượng cây bút (<span class="kbd-tag">F</span>), giữ chuột trái di theo viền vật thể; khi nhả chuột, hệ thống tự nối khép kín thành Polygon, lọc đỉnh nhiễu và tự động lưu ngay.
+            </div>
+          </div>
+
+          <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#b91c1c; margin-bottom:3px;">
+              <i class="fa-solid fa-layer-group"></i> 4. Xóa nhanh ảnh lỗi (Ctrl + Z), Phông chữ theo Zoom &amp; Tự sửa trùng Shapely
+            </div>
+            <div>
+              Bấm <b>&times;</b> trên thumbnail để xóa nhanh ảnh lỗi và khôi phục nguyên vẹn bằng <span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span>; nhãn trên canvas tự co giãn theo mức Zoom; tự cảnh báo &amp; cắt vùng giao nhau <code>&gt; 2 px²</code> bằng nút <b>Tự sửa</b>.
             </div>
           </div>
         </div>
@@ -3143,8 +3249,10 @@
   </div>
 
   <script>
-    const APP_VERSION = "v1.41";
+    const APP_VERSION = "v1.42";
     const SEEN_VERSION_KEY = "robolabel_seen_version";
+    const SIDEBAR_SPLIT_KEY = "robolabel_sidebar_top_height";
+    let preferredSidebarTopPx = null;
 
     // State
     let CLASSES = [
@@ -3214,7 +3322,165 @@
       redraw();
     }
 
-    function selectAnnotation(idx) {
+    function clampSidebarTopHeight(requestedPx, sidebarHeight, splitterHeight) {
+      const avail = Math.max(0, sidebarHeight - splitterHeight);
+      const minTop = Math.min(80, Math.floor(avail * 0.25));
+      const minBottom = Math.min(248, Math.floor(avail * 0.42));
+      const maxTop = Math.max(minTop, avail - minBottom);
+      return Math.max(minTop, Math.min(maxTop, Math.round(requestedPx)));
+    }
+
+    function setupSidebarSplitter() {
+      const sidebar = document.getElementById("sidebarLeft");
+      const classesPanel = document.getElementById("classesPanelSection");
+      const splitter = document.getElementById("sidebarSplitter");
+      if (!sidebar || !classesPanel || !splitter) return;
+
+      const applySidebarTopHeight = (rawPx, persist = false) => {
+        const clamped = clampSidebarTopHeight(rawPx, sidebar.clientHeight, splitter.offsetHeight || 10);
+        classesPanel.style.flex = "0 0 auto";
+        classesPanel.style.maxHeight = "none";
+        classesPanel.style.height = `${clamped}px`;
+        if (persist) {
+          preferredSidebarTopPx = clamped;
+          try {
+            localStorage.setItem(SIDEBAR_SPLIT_KEY, String(clamped));
+          } catch (_) {}
+        }
+      };
+
+      const resetSidebarSplit = () => {
+        preferredSidebarTopPx = null;
+        classesPanel.style.height = "";
+        classesPanel.style.flex = "";
+        classesPanel.style.maxHeight = "";
+        try {
+          localStorage.removeItem(SIDEBAR_SPLIT_KEY);
+        } catch (_) {}
+      };
+
+      try {
+        const saved = Number(localStorage.getItem(SIDEBAR_SPLIT_KEY));
+        if (Number.isFinite(saved) && saved > 0) {
+          preferredSidebarTopPx = saved;
+          applySidebarTopHeight(saved, false);
+        }
+      } catch (_) {}
+
+      let isDraggingSplit = false;
+      let didMove = false;
+      let startY = 0;
+      let startHeight = 0;
+
+      splitter.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        e.preventDefault();
+        isDraggingSplit = true;
+        didMove = false;
+        startY = e.clientY;
+        startHeight = classesPanel.getBoundingClientRect().height;
+        splitter.classList.add("dragging");
+        document.body.style.userSelect = "none";
+        document.body.style.cursor = "row-resize";
+        try {
+          splitter.setPointerCapture(e.pointerId);
+        } catch (_) {}
+      });
+
+      splitter.addEventListener("pointermove", (e) => {
+        if (!isDraggingSplit) return;
+        const dy = e.clientY - startY;
+        if (Math.abs(dy) > 0) didMove = true;
+        applySidebarTopHeight(startHeight + dy, false);
+      });
+
+      const endDrag = () => {
+        if (!isDraggingSplit) return;
+        isDraggingSplit = false;
+        splitter.classList.remove("dragging");
+        document.body.style.userSelect = "";
+        document.body.style.cursor = "";
+        if (didMove) {
+          applySidebarTopHeight(classesPanel.getBoundingClientRect().height, true);
+        }
+      };
+
+      splitter.addEventListener("pointerup", endDrag);
+      splitter.addEventListener("pointercancel", endDrag);
+      splitter.addEventListener("lostpointercapture", endDrag);
+
+      splitter.addEventListener("dblclick", resetSidebarSplit);
+
+      splitter.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          e.preventDefault();
+          const cur = classesPanel.getBoundingClientRect().height;
+          applySidebarTopHeight(cur + (e.key === "ArrowDown" ? 24 : -24), true);
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        if (preferredSidebarTopPx !== null) {
+          applySidebarTopHeight(preferredSidebarTopPx, false);
+        }
+      });
+    }
+
+    function computeAnnotationScrollTop(itemOffsetTop, itemHeight, listScrollTop, listClientHeight, listScrollHeight, mode = "center") {
+      const maxScroll = Math.max(0, listScrollHeight - listClientHeight);
+      const itemBottom = itemOffsetTop + itemHeight;
+      const isFullyVisible = itemOffsetTop >= listScrollTop && itemBottom <= listScrollTop + listClientHeight;
+
+      if (mode === "nearest" && isFullyVisible) {
+        return Math.max(0, Math.min(maxScroll, listScrollTop));
+      }
+
+      let targetTop;
+      if (mode === "center") {
+        targetTop = itemOffsetTop - (listClientHeight - itemHeight) / 2;
+      } else if (itemOffsetTop < listScrollTop) {
+        targetTop = itemOffsetTop;
+      } else {
+        targetTop = itemBottom - listClientHeight;
+      }
+
+      return Math.max(0, Math.min(maxScroll, Math.round(targetTop)));
+    }
+
+    function scrollAnnotationIntoView(idx, mode = "center") {
+      const list = document.getElementById("annotationList");
+      if (!list) return;
+      const item = list.querySelector(`.ann-item[data-ann-idx="${idx}"]`);
+      if (!item) return;
+
+      const listRect = list.getBoundingClientRect();
+      const itemRect = item.getBoundingClientRect();
+      const itemTopInList = itemRect.top - (listRect.top + list.clientTop) + list.scrollTop;
+      const targetTop = computeAnnotationScrollTop(
+        itemTopInList,
+        itemRect.height,
+        list.scrollTop,
+        list.clientHeight,
+        list.scrollHeight,
+        mode
+      );
+
+      if (Math.abs(targetTop - list.scrollTop) > 1) {
+        if (typeof list.scrollTo === "function") {
+          list.scrollTo({ top: targetTop, behavior: mode === "center" ? "smooth" : "auto" });
+        } else {
+          list.scrollTop = targetTop;
+        }
+      }
+
+      if (mode === "center") {
+        item.classList.remove("locate-flash");
+        void item.offsetWidth;
+        item.classList.add("locate-flash");
+      }
+    }
+
+    function selectAnnotation(idx, scrollMode = "center") {
       if (idx < 0 || idx >= annotations.length) {
         selectedAnnotationIndex = null;
       } else {
@@ -3222,6 +3488,9 @@
         currentClass = annotations[idx].class_name;
       }
       updateAnnotationUI();
+      if (selectedAnnotationIndex !== null && scrollMode) {
+        scrollAnnotationIntoView(selectedAnnotationIndex, scrollMode);
+      }
       redraw();
     }
 
@@ -3699,6 +3968,7 @@
 
     // Init
     window.addEventListener("DOMContentLoaded", async () => {
+      setupSidebarSplitter();
       renderClassList();
       await loadSystemInfo();
       await loadProjectState();
@@ -3793,6 +4063,8 @@
     // Render Classes
     function renderClassList() {
       const listEl = document.getElementById("classList");
+      const topSection = document.getElementById("classesPanelSection");
+      const prevTopScroll = topSection ? topSection.scrollTop : 0;
       listEl.innerHTML = "";
       CLASSES.forEach(cls => {
         const count = annotations.filter(a => a.class_name === cls.name).length;
@@ -3808,6 +4080,7 @@
         `;
         listEl.appendChild(item);
       });
+      if (topSection) topSection.scrollTop = prevTopScroll;
     }
 
     function selectClass(className) {
@@ -4216,6 +4489,8 @@
       vertexMoved = false;
       isPanning = false;
       isDragging = false;
+      const annList = document.getElementById("annotationList");
+      if (annList) annList.scrollTop = 0;
     }
 
     async function flushPendingSave() {
@@ -4402,6 +4677,7 @@
 
       const list = document.getElementById("annotationList");
       if (!list) return;
+      const prevScrollTop = list.scrollTop;
       list.innerHTML = "";
 
       annotations.forEach((ann, idx) => {
@@ -4417,7 +4693,7 @@
         const item = document.createElement("div");
         item.className = `ann-item ${isSelected ? 'selected' : ''}`;
         item.dataset.annIdx = String(idx);
-        item.onclick = () => selectAnnotation(idx);
+        item.onclick = () => selectAnnotation(idx, "nearest");
 
         const optionsHtml = CLASSES.map(c =>
           `<option value="${escapeHtml(c.name)}" ${c.name === ann.class_name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
@@ -4443,6 +4719,7 @@
         `;
         list.appendChild(item);
       });
+      list.scrollTop = prevScrollTop;
       updateOverlapAlertUI();
     }
 

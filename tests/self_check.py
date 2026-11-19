@@ -686,6 +686,66 @@ assert(clamped.x === 0 && clamped.y === 150, "clampCanvasCoords must clamp to ca
         assert proc.returncode == 0, f"JS freehand check failed: {proc.stderr or proc.stdout}"
 
 
+def check_sidebar_split_and_scroll_ui():
+    html_path = os.path.join(ROOT_DIR, "static", "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    for marker in (
+        "classesPanelSection",
+        "sidebarSplitter",
+        "objectsPanelSection",
+        "setupSidebarSplitter",
+        "clampSidebarTopHeight",
+        "computeAnnotationScrollTop",
+        "scrollAnnotationIntoView",
+    ):
+        assert marker in html, f"missing sidebar split/scroll marker: {marker}"
+
+    node_exe = shutil.which("node")
+    if node_exe:
+        js_check = r"""
+const fs = require("fs");
+const vm = require("vm");
+const html = fs.readFileSync(process.argv[1], "utf8");
+const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+const scriptSrc = scripts.sort((a, b) => b.length - a.length)[0];
+new vm.Script(scriptSrc);
+const clampSrc = scriptSrc.match(/function clampSidebarTopHeight[\s\S]*?\n    \}/)[0];
+const scrollSrc = scriptSrc.match(/function computeAnnotationScrollTop[\s\S]*?\n    \}/)[0];
+const ctx = {};
+vm.runInNewContext(clampSrc + "\n" + scrollSrc, ctx);
+const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+
+// Normal 800px sidebar
+assert(ctx.clampSidebarTopHeight(10, 800, 10) === 80, "800px minTop clamp");
+assert(ctx.clampSidebarTopHeight(300, 800, 10) === 300, "800px mid passthrough");
+assert(ctx.clampSidebarTopHeight(700, 800, 10) === 542, "800px maxTop clamp");
+
+// Laptop 600px sidebar
+assert(ctx.clampSidebarTopHeight(50, 600, 10) === 80, "600px minTop clamp");
+assert(ctx.clampSidebarTopHeight(200, 600, 10) === 200, "600px mid passthrough");
+assert(ctx.clampSidebarTopHeight(500, 600, 10) === 343, "600px maxTop clamp");
+
+// Tiny 200px sidebar
+assert(ctx.clampSidebarTopHeight(0, 200, 10) === 47, "200px minTop clamp");
+assert(ctx.clampSidebarTopHeight(80, 200, 10) === 80, "200px mid passthrough");
+assert(ctx.clampSidebarTopHeight(200, 200, 10) === 111, "200px maxTop clamp");
+
+// computeAnnotationScrollTop center mode
+assert(ctx.computeAnnotationScrollTop(300, 32, 0, 200, 1000, "center") === 216, "center middle item");
+assert(ctx.computeAnnotationScrollTop(0, 32, 400, 200, 1000, "center") === 0, "center first item clamped to 0");
+assert(ctx.computeAnnotationScrollTop(968, 32, 0, 200, 1000, "center") === 800, "center last item clamped to maxScroll");
+assert(ctx.computeAnnotationScrollTop(60, 32, 0, 200, 150, "center") === 0, "center non-scrolling list -> 0");
+
+// computeAnnotationScrollTop nearest mode
+assert(ctx.computeAnnotationScrollTop(150, 32, 100, 200, 1000, "nearest") === 100, "nearest visible stays put");
+assert(ctx.computeAnnotationScrollTop(40, 32, 100, 200, 1000, "nearest") === 40, "nearest above scrolls up");
+assert(ctx.computeAnnotationScrollTop(320, 32, 100, 200, 1000, "nearest") === 152, "nearest below scrolls down");
+"""
+        proc = subprocess.run([node_exe, "-e", js_check, html_path], capture_output=True, text=True)
+        assert proc.returncode == 0, f"JS sidebar split/scroll check failed: {proc.stderr or proc.stdout}"
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         check_device_manager(tmp)
@@ -693,6 +753,7 @@ def main():
         check_flask_routes(tmp)
         check_overlap_detection_and_autofix(tmp)
         check_freehand_polygon_ui()
+        check_sidebar_split_and_scroll_ui()
     print("[PASS] All RoboLabel AI self-checks passed.")
 
 

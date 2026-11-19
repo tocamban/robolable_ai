@@ -1,12 +1,12 @@
 # RoboLabel AI — Studio Gán Nhãn & Phân Đoạn Ảnh Tự Động Cho YOLO
 
-![Version](https://img.shields.io/badge/Version-v1.41-7c3aed?style=flat-square)
+![Version](https://img.shields.io/badge/Version-v1.42-7c3aed?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%20--%203.14-3776ab?style=flat-square&logo=python&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-SAM%202.1%20%2B%20CLIP%20ViT--B%2F32-0ea5e9?style=flat-square)
 ![Export](https://img.shields.io/badge/Export-YOLO--Seg%20(.txt)%20%26%20Labelme%20(.json)-10b981?style=flat-square)
 ![Compute](https://img.shields.io/badge/Compute-NVIDIA%20CUDA%20%2F%20CPU-76b900?style=flat-square)
 
-> **Phiên bản hiện tại:** `v1.41` — Bổ sung công cụ **Vẽ Đường Bao Tự Do (`F`)** giữ chuột vẽ theo viền và tự nối khép kín khi nhả chuột, cùng loại bỏ nhanh ảnh lỗi (`Ctrl + Z`) và phông nhãn co giãn theo Zoom.
+> **Phiên bản hiện tại:** `v1.42` — Bổ sung thanh kéo căn chỉnh tỷ lệ giữa bảng **Classes** và **Current Objects** (lưu vị trí), tự động cuộn tới đúng nhãn trong **Current Objects** khi chọn vùng trên ảnh, và thanh Header tự xuống 2 hàng gọn gàng trên cửa sổ hẹp.
 
 ---
 
@@ -28,6 +28,12 @@ Công cụ giúp rút ngắn tối đa thời gian vẽ thủ công khi cần g�
 | **Xuất `.txt` & `.json` tùy chọn** | Xuất **YOLO `.txt`** (tọa độ chuẩn hóa `[0, 1]`, tự lược bỏ `group_id`), **Labelme / X-AnyLabeling `.json`** (pixel tuyệt đối, giữ `group_id`), hoặc **cả hai**, chọn cấu trúc `train/val` hoặc thư mục phẳng, hỗ trợ preset `Chuẩn 5 lớp`. |
 | **Quản lý Project & Auto-Save** | Tạo nhiều Project độc lập (kéo thả thư mục hoặc chọn từ ổ đĩa), tự nhận diện dataset ảnh thuần / YOLO Box / YOLO Seg, đồng bộ Auto-Save liên tục. |
 | **Điều phối GPU CUDA / CPU** | Tự dò GPU NVIDIA (`cu126` / `cu124`), chuyển đổi linh hoạt GPU/CPU ngay trên Header, tự lùi về CPU khi tràn VRAM và tích hợp **Benchmark GPU**. |
+
+### Điểm mới nổi bật trong phiên bản `v1.42`
+
+- **Kéo căn chỉnh tỷ lệ bảng `Classes` và `Current Objects`:** Kéo thanh ngăn ngang ở sidebar trái (hoặc dùng phím `↑` / `↓`, double-click để đặt lại mặc định) để mở rộng hoặc thu gọn từng danh sách, giữ giới hạn an toàn cho cả hai bảng và tự lưu độ cao vào trình duyệt.
+- **Tự động cuộn tới nhãn đang chọn trong `Current Objects`:** Khi bấm chọn một vùng đã gán nhãn trên ảnh (bằng công cụ Chọn `V` hoặc Cục tẩy `E`), danh sách `Current Objects` tự động cuộn mượt đến đúng dòng nhãn tương ứng và nháy sáng nổi bật để không phải lăn chuột tìm thủ công.
+- **Thanh Header tự thích ứng cửa sổ hẹp (`<= 1080px`):** Tự xuống 2 hàng gọn gàng trên màn hình kích thước nhỏ, giữ hiển thị đầy đủ trạng thái Auto-Save, chọn mô hình SAM và nút `GPU / CPU` không bị cắt xén.
 
 ### Điểm mới nổi bật trong phiên bản `v1.41`
 
@@ -138,7 +144,7 @@ Sau khi chạy `run_app.bat`, trình duyệt sẽ mở không gian làm việc c
    - **Chọn Project:** Hiển thị Workspace / Project hiện tại (ví dụ `Workspace Mặc định`); click để mở nhanh danh sách Project.
    - **Chọn mô hình SAM:** Chuyển giữa **`SAM 2.1 (Tiny)`** (nhanh, khuyên dùng hằng ngày) và **`SAM 2.1 (Large)`** (viền chi tiết hơn).
    - **Nút `GPU / CPU`:** Xem thiết bị đang chạy (`GPU: GTX 165...` hoặc `CPU`), chuyển đổi CUDA/CPU và mở **Benchmark GPU**.
-   - **Badge phiên bản (`v1.41`) & nút `Hướng dẫn` (`?` / `F1`):** Mở thông báo điểm mới bản cập nhật (khi nhấn badge `v1.41`) hoặc bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
+   - **Badge phiên bản (`v1.42`) & nút `Hướng dẫn` (`?` / `F1`):** Mở thông báo điểm mới bản cập nhật (khi nhấn badge `v1.42`) hoặc bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
    - **`Quản lý Project` / `Xuất nhãn` / `Tải ảnh`:** Tạo hoặc mở Dataset Project, xuất nhãn tùy chọn (`.txt` / `.json`), và thêm ảnh đơn lẻ.
 2. **Cột trái (Classes & Current Objects):**
    - Công tắc **`Tự nhận diện Class`** (bật để CLIP tự đoán nhãn khi cắt bằng AI; tắt để gán đúng Class đang chọn thủ công).
