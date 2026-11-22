@@ -31,6 +31,7 @@ from project_manager import (
     ProjectManager,
     inspect_dataset_folder,
     is_image_file,
+    normalize_group_id,
     sanitize_annotations_list,
 )
 
@@ -498,6 +499,24 @@ def detect_polygon_overlaps(annotations, min_area=OVERLAP_MIN_AREA_PX):
     return overlaps
 
 
+def detect_missing_group_ids(annotations):
+    """Liệt kê các nhãn chưa được gán group_id hợp lệ (group_id=0 vẫn hợp lệ)."""
+    if not annotations:
+        return []
+    missing = []
+    for idx, ann in enumerate(annotations):
+        if not isinstance(ann, dict):
+            continue
+        if normalize_group_id(ann.get("group_id")) is None:
+            cls_name = _get_ann_class(ann) or "object"
+            missing.append({
+                "index": idx,
+                "class_name": cls_name,
+                "label": f"{cls_name} #{idx + 1}",
+            })
+    return missing
+
+
 def _finalize_cut_pieces(pieces, higher_geoms, min_area=OVERLAP_MIN_AREA_PX):
     """Làm tròn tọa độ mảnh cắt và gọt lại nếu sai số làm tròn dọc biên dài vẫn gây chồng > min_area."""
     finalized = []
@@ -619,6 +638,7 @@ def list_images():
         ann_path = os.path.join(ann_dir, f"{f}.json")
         ann_count = 0
         overlaps = []
+        missing_ids = []
         if os.path.isfile(ann_path):
             try:
                 with open(ann_path, 'r', encoding='utf-8') as af:
@@ -626,9 +646,11 @@ def list_images():
                     anns = ann_data.get('annotations', [])
                     ann_count = len(anns)
                     overlaps = detect_polygon_overlaps(anns)
+                    missing_ids = detect_missing_group_ids(anns)
             except Exception:
                 ann_count = 0
                 overlaps = []
+                missing_ids = []
         result.append({
             "filename": f,
             "url": f"/api/image/{quote(f)}?p={ctx['id']}",
@@ -638,6 +660,8 @@ def list_images():
             "has_overlap": len(overlaps) > 0,
             "overlap_count": len(overlaps),
             "overlaps": overlaps,
+            "has_missing_id": len(missing_ids) > 0,
+            "missing_id_count": len(missing_ids),
         })
     return jsonify(result)
 
@@ -1044,11 +1068,15 @@ def handle_annotations(filename):
             res = pm.sync_image_annotations(safe_name, anns)
             sanitized = sanitize_annotations_list(anns if isinstance(anns, list) else [])
             overlaps = detect_polygon_overlaps(sanitized)
+            missing_ids = detect_missing_group_ids(sanitized)
             return jsonify({
                 **res,
                 "overlaps": overlaps,
                 "has_overlap": len(overlaps) > 0,
                 "overlap_count": len(overlaps),
+                "missing_ids": missing_ids,
+                "has_missing_id": len(missing_ids) > 0,
+                "missing_id_count": len(missing_ids),
             })
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
@@ -1065,12 +1093,17 @@ def handle_annotations(filename):
                         ann_data["annotations"] = []
             except Exception:
                 ann_data = {"annotations": []}
-        overlaps = detect_polygon_overlaps(ann_data.get("annotations", []))
+        cur_anns = ann_data.get("annotations", [])
+        overlaps = detect_polygon_overlaps(cur_anns)
+        missing_ids = detect_missing_group_ids(cur_anns)
         return jsonify({
             **ann_data,
             "overlaps": overlaps,
             "has_overlap": len(overlaps) > 0,
             "overlap_count": len(overlaps),
+            "missing_ids": missing_ids,
+            "has_missing_id": len(missing_ids) > 0,
+            "missing_id_count": len(missing_ids),
         })
 
 
@@ -1103,12 +1136,16 @@ def api_autofix_overlaps():
         if safe_name:
             pm.sync_image_annotations(safe_name, sanitized)
         remaining_overlaps = detect_polygon_overlaps(sanitized)
+        missing_ids = detect_missing_group_ids(sanitized)
         return jsonify({
             "success": True,
             "annotations": sanitized,
             "overlaps": remaining_overlaps,
             "has_overlap": len(remaining_overlaps) > 0,
             "overlap_count": len(remaining_overlaps),
+            "missing_ids": missing_ids,
+            "has_missing_id": len(missing_ids) > 0,
+            "missing_id_count": len(missing_ids),
             "fixed_count": fixed_count,
             "split_count": split_count,
         })

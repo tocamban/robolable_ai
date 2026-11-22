@@ -1033,6 +1033,190 @@ vm.runInNewContext(shortcutSrc + "\n" + runTests, ctx);
         assert proc.returncode == 0, f"JS custom shortcuts/navigation check failed: {proc.stderr or proc.stdout}"
 
 
+def check_missing_group_id_alert_and_blue_border(tmp):
+    # 1. Backend detect_missing_group_ids() unit assertions (group_id=0 is valid!)
+    mixed_anns = [
+        {"class_name": "ripe", "group_id": 1, "type": "polygon", "polygon": [[0, 0], [30, 0], [30, 30]]},
+        {"class_name": "calyx", "group_id": 0, "type": "polygon", "polygon": [[40, 0], [60, 0], [60, 20]]},
+        {"class_name": "stem", "type": "polygon", "polygon": [[70, 0], [80, 0], [80, 20]]},
+        {"class_name": "unripe", "group_id": None, "type": "bbox", "bbox": [10, 40, 50, 70]},
+    ]
+    missing = robolabel_app.detect_missing_group_ids(mixed_anns)
+    assert len(missing) == 2
+    assert [m["index"] for m in missing] == [2, 3]
+    assert missing[0]["label"] == "stem #3" and missing[1]["label"] == "unripe #4"
+
+    # 2. Flask API integration: POST/GET /api/annotations, /api/images, /api/autofix_overlaps
+    base_dir = os.path.join(tmp, "missing_id_api_base")
+    orig_pm = robolabel_app.pm
+    robolabel_app.pm = pm_mod.ProjectManager(base_dir)
+    client = robolabel_app.app.test_client()
+    try:
+        assert client.post("/api/upload", data={"file": (_img_bytes(), "miss.jpg")}).status_code == 200
+        save_resp = client.post("/api/annotations/miss.jpg", json={"annotations": mixed_anns})
+        sjson = save_resp.get_json()
+        assert save_resp.status_code == 200
+        assert sjson["has_missing_id"] is True and sjson["missing_id_count"] == 2
+        assert [m["index"] for m in sjson["missing_ids"]] == [2, 3]
+
+        get_resp = client.get("/api/annotations/miss.jpg").get_json()
+        assert get_resp["has_missing_id"] is True and get_resp["missing_id_count"] == 2
+
+        imgs = client.get("/api/images").get_json()
+        miss_img = next(i for i in imgs if i["filename"] == "miss.jpg")
+        assert miss_img["has_missing_id"] is True and miss_img["missing_id_count"] == 2
+
+        # Assigning IDs to all annotations clears missing ID alert
+        all_with_ids = [dict(a, group_id=i) for i, a in enumerate(mixed_anns)]
+        save_ok = client.post("/api/annotations/miss.jpg", json={"annotations": all_with_ids}).get_json()
+        assert save_ok["has_missing_id"] is False and save_ok["missing_id_count"] == 0
+        imgs_ok = client.get("/api/images").get_json()
+        miss_img_ok = next(i for i in imgs_ok if i["filename"] == "miss.jpg")
+        assert miss_img_ok["has_missing_id"] is False and miss_img_ok["missing_id_count"] == 0
+    finally:
+        robolabel_app.pm = orig_pm
+
+    # 3. Frontend markers + Node vm check for getMissingIdAnnotations()
+    html_path = os.path.join(ROOT_DIR, "static", "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    for marker in (
+        "missingIdAlertBanner",
+        "has-missing-id",
+        "ann-missing-id-tag",
+        "thumb-missing-id-dot",
+        "updateMissingIdAlertUI",
+        "focusNextMissingIdAnnotation",
+        "getMissingIdAnnotations",
+        "#2563eb",
+        "[Thiếu ID]",
+    ):
+        assert marker in html, f"missing missing-ID blue border marker: {marker}"
+
+    node_exe = shutil.which("node")
+    if node_exe:
+        js_check = r"""
+const fs = require("fs");
+const vm = require("vm");
+const html = fs.readFileSync(process.argv[1], "utf8");
+const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+const scriptSrc = scripts.sort((a, b) => b.length - a.length)[0];
+new vm.Script(scriptSrc);
+const helperSrc = scriptSrc.match(/function hasGroupId[\s\S]*?\n    \}/)[0] + "\n" +
+  scriptSrc.match(/function getMissingIdAnnotations[\s\S]*?\n    \}/)[0] + "\n" +
+  scriptSrc.match(/function updateMissingIdAlertUI[\s\S]*?\n    \}/)[0] + "\n" +
+  scriptSrc.match(/function focusNextMissingIdAnnotation[\s\S]*?\n    \}/)[0] + "\n" +
+  scriptSrc.match(/function redraw\(\)[\s\S]*?\n    \}/)[0];
+
+const rowClasses = [new Set(["ann-item"]), new Set(["ann-item"]), new Set(["ann-item"]), new Set(["ann-item"])];
+const rowTags = [{ style: {}, title: "" }, { style: {}, title: "" }, { style: {}, title: "" }, { style: {}, title: "" }];
+const bannerEl = { style: {}, title: "" };
+const textEl = { innerText: "" };
+const rows = [0, 1, 2, 3].map(idx => ({
+  dataset: { annIdx: String(idx) },
+  classList: {
+    toggle: (cls, force) => { if (force) rowClasses[idx].add(cls); else rowClasses[idx].delete(cls); }
+  },
+  querySelector: (sel) => (sel === ".ann-missing-id-tag" ? rowTags[idx] : null)
+}));
+const strokeCalls = [];
+const textCalls = [];
+const mockCtx = {
+  strokeStyle: "",
+  lineWidth: 1,
+  fillStyle: "",
+  font: "",
+  lineJoin: "",
+  miterLimit: 2,
+  clearRect: () => {},
+  drawImage: () => {},
+  beginPath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  closePath: () => {},
+  save: () => {},
+  restore: () => {},
+  setLineDash: () => {},
+  stroke: () => { strokeCalls.push({ style: mockCtx.strokeStyle, width: mockCtx.lineWidth }); },
+  fill: () => {},
+  strokeText: (txt) => { textCalls.push(txt); },
+  fillText: () => {}
+};
+
+const ctx = {
+  CLASSES: [
+    { name: "ripe", color: "#ef4444" },
+    { name: "calyx", color: "#a855f7" },
+    { name: "stem", color: "#eab308" },
+    { name: "unripe", color: "#22c55e" }
+  ],
+  currentImageName: "miss.jpg",
+  images: [{ filename: "miss.jpg", annotations_count: 4, has_missing_id: false, missing_id_count: 0 }],
+  annotations: [
+    { class_name: "ripe", group_id: 0, polygon: [[0,0],[20,0],[20,20]] },
+    { class_name: "calyx", polygon: [[30,0],[50,0],[50,20]] },
+    { class_name: "stem", group_id: "", polygon: [[60,0],[80,0],[80,20]] },
+    { class_name: "unripe", group_id: 2, polygon: [[90,0],[110,0],[110,20]] }
+  ],
+  selectedAnnotationIndex: null,
+  activeTool: "select",
+  isErasing: false,
+  isDragging: false,
+  isDrawingLasso: false,
+  isDrawingFreehand: false,
+  manualPolyPoints: [],
+  lassoPoints: [],
+  freehandPoints: [],
+  eraserStrokes: [],
+  dragCurrent: {},
+  maskFillActive: false,
+  zoomLevel: 1.0,
+  baseImage: { complete: false, naturalWidth: 0 },
+  canvas: { width: 200, height: 100 },
+  ctx: mockCtx,
+  getGroupColor: () => "#2563eb",
+  getZoomInv: () => 1,
+  syncCalls: 0,
+  syncThumbnailMeta: () => { ctx.syncCalls++; },
+  selectedList: [],
+  popovers: [],
+  selectAnnotation: (idx) => { ctx.selectedAnnotationIndex = idx; ctx.selectedList.push(idx); },
+  openCanvasQuickIdPopover: (idx) => { ctx.popovers.push(idx); },
+  showToast: () => {},
+  document: {
+    getElementById: (id) => (id === "missingIdAlertBanner" ? bannerEl : (id === "missingIdAlertText" ? textEl : null)),
+    querySelectorAll: (sel) => (sel === "#annotationList .ann-item[data-ann-idx]" ? rows : [])
+  }
+};
+vm.runInNewContext(helperSrc, ctx);
+const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+const res = ctx.getMissingIdAnnotations(ctx.annotations);
+assert(res.length === 2, "expected 2 missing ID annotations, got " + res.length);
+assert(res[0].index === 1 && res[0].label === "calyx #2", "calyx #2 missing");
+assert(res[1].index === 2 && res[1].label === "stem #3", "stem #3 missing");
+assert(ctx.getMissingIdAnnotations([]).length === 0, "empty list -> 0");
+
+ctx.updateMissingIdAlertUI();
+assert(bannerEl.style.display === "flex", "missing ID banner must display");
+assert(textEl.innerText.includes("2 nhãn thiếu Group ID"), "banner text must count 2 missing");
+assert(!rowClasses[0].has("has-missing-id") && rowClasses[1].has("has-missing-id") && rowClasses[2].has("has-missing-id") && !rowClasses[3].has("has-missing-id"), "rows 1 & 2 must have has-missing-id class");
+assert(rowTags[1].style.display === "inline-flex" && rowTags[0].style.display === "none", "row 1 tag shown, row 0 hidden");
+assert(ctx.images[0].has_missing_id === true && ctx.images[0].missing_id_count === 2 && ctx.syncCalls === 1, "image thumbnail meta synced");
+
+assert(ctx.focusNextMissingIdAnnotation() === true && ctx.selectedAnnotationIndex === 1 && ctx.popovers[0] === 1, "focusNextMissingIdAnnotation picks first missing (#1)");
+assert(ctx.focusNextMissingIdAnnotation() === true && ctx.selectedAnnotationIndex === 2 && ctx.popovers[1] === 2, "focusNextMissingIdAnnotation cycles to #2");
+assert(ctx.focusNextMissingIdAnnotation() === true && ctx.selectedAnnotationIndex === 1 && ctx.popovers[2] === 1, "focusNextMissingIdAnnotation wraps to #1");
+
+ctx.selectedAnnotationIndex = null;
+ctx.redraw();
+assert(strokeCalls.some(c => c.style === "#2563eb" && c.width > 3), "canvas redraw must draw blue outer stroke #2563eb for missing-ID annotations");
+assert(textCalls.some(t => t.includes("[Thiếu ID] calyx #2")), "canvas label must show [Thiếu ID] prefix");
+assert(textCalls.some(t => t.includes("[ID:0] ripe #1")), "group_id=0 must render [ID:0], not [Thiếu ID]");
+"""
+        proc = subprocess.run([node_exe, "-e", js_check, html_path], capture_output=True, text=True)
+        assert proc.returncode == 0, f"JS missing-ID check failed: {proc.stderr or proc.stdout}"
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         check_device_manager(tmp)
@@ -1044,6 +1228,7 @@ def main():
         check_canvas_quick_id_ui()
         check_clear_group_id_ui()
         check_custom_shortcuts_and_navigation_ui()
+        check_missing_group_id_alert_and_blue_border(tmp)
     print("[PASS] All RoboLabel AI self-checks passed.")
 
 

@@ -530,6 +530,16 @@
       box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.35);
     }
 
+    .thumb-item.has-missing-id:not(.active) img {
+      border: 2px solid #2563eb;
+      box-shadow: 0 0 0 1.5px rgba(37, 99, 235, 0.35);
+    }
+
+    .thumb-item.has-overlap.has-missing-id:not(.active) img {
+      border: 2px solid #f97316;
+      box-shadow: 0 0 0 2px #2563eb;
+    }
+
     .thumb-name {
       font-size: 9.5px;
       color: #64748b;
@@ -550,6 +560,12 @@
 
     .thumb-overlap-dot {
       color: #ea580c;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .thumb-missing-id-dot {
+      color: #2563eb;
       font-size: 10px;
       flex-shrink: 0;
     }
@@ -587,14 +603,42 @@
       max-width: min(580px, 100%);
     }
 
-    .ann-item.has-overlap {
-      background: #fff7ed;
-      border-color: #fdba74;
+    .missing-id-alert-banner {
+      align-self: flex-start;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border: 1.5px solid #3b82f6;
+      border-left: 4px solid #2563eb;
+      color: #1e40af;
+      padding: 7px 12px;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.16);
+      font-size: 12px;
+      max-width: min(580px, 100%);
     }
 
-    .ann-item.selected.has-overlap {
-      background: #fef2f2;
-      border-color: #ea580c;
+    .btn-focus-missing-id {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #ffffff;
+      border: none;
+      padding: 5px 11px;
+      border-radius: 7px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+      transition: filter 0.15s;
+    }
+
+    .btn-focus-missing-id:hover {
+      filter: brightness(1.08);
     }
 
     .ann-overlap-tag {
@@ -608,6 +652,20 @@
       background: #ffedd5;
       color: #c2410c;
       border: 1px solid #fdba74;
+      flex-shrink: 0;
+    }
+
+    .ann-missing-id-tag {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      border: 1px solid #93c5fd;
       flex-shrink: 0;
     }
 
@@ -858,6 +916,33 @@
       background: #f5f3ff;
       border-color: var(--primary);
       box-shadow: 0 1px 6px rgba(124, 58, 237, 0.18);
+    }
+
+    .ann-item.has-missing-id {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.25);
+    }
+
+    .ann-item.selected.has-missing-id {
+      background: #dbeafe;
+      border-color: #2563eb;
+      box-shadow: 0 1px 6px rgba(37, 99, 235, 0.28);
+    }
+
+    .ann-item.has-overlap {
+      background: #fff7ed;
+      border-color: #fdba74;
+    }
+
+    .ann-item.selected.has-overlap {
+      background: #fef2f2;
+      border-color: #ea580c;
+    }
+
+    .ann-item.has-overlap.has-missing-id {
+      border-color: #2563eb;
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.38);
     }
 
     @keyframes annLocateFlash {
@@ -2150,6 +2235,17 @@
           </span>
           <button type="button" id="btnAutoFixOverlap" class="btn-autofix-overlap" onclick="autoFixOverlaps()" title="Tự động cắt trừ phần giao nhau theo thứ tự ưu tiên (calyx > stem > quả)">
             <i class="fa-solid fa-wand-magic-sparkles"></i> Tự sửa
+          </button>
+        </div>
+
+        <!-- Missing Group ID Alert Banner (Blue Border) -->
+        <div id="missingIdAlertBanner" class="missing-id-alert-banner" role="status">
+          <i class="fa-solid fa-tag" style="color:#2563eb; font-size:15px; flex-shrink:0;"></i>
+          <span id="missingIdAlertText" style="font-weight:600; line-height:1.35; overflow:hidden; text-overflow:ellipsis;">
+            Phát hiện 1 nhãn thiếu Group ID
+          </span>
+          <button type="button" id="btnFocusMissingId" class="btn-focus-missing-id" onclick="focusNextMissingIdAnnotation()" title="Chọn nhanh nhãn thiếu Group ID tiếp theo để nhập số ID">
+            <i class="fa-solid fa-hashtag"></i> Gán ID ngay
           </button>
         </div>
 
@@ -4588,6 +4684,7 @@
       }
       // Update inputs in place instead of rebuilding #annotationList DOM on blur
       syncGroupIdInputsUi(idx, newGid);
+      updateMissingIdAlertUI();
       saveAnnotations();
       redraw();
       showToast(newGid === null ? `Đã bỏ Group ID của #${idx + 1}` : `Đã gán Group ID = ${newGid} cho #${idx + 1}`);
@@ -5382,7 +5479,9 @@
       if (!itemEl || !img) return;
 
       const hasOverlap = Boolean(img.has_overlap);
+      const hasMissingId = Boolean(img.has_missing_id);
       itemEl.classList.toggle("has-overlap", hasOverlap);
+      itemEl.classList.toggle("has-missing-id", hasMissingId);
 
       const nameEl = itemEl.querySelector(".thumb-name");
       if (nameEl) {
@@ -5396,6 +5495,23 @@
           dotEl.title = `Cảnh báo: ${img.overlap_count || 1} vùng trùng nhãn`;
         } else if (dotEl) {
           dotEl.remove();
+        }
+
+        let missDotEl = nameEl.querySelector(".thumb-missing-id-dot");
+        if (hasMissingId) {
+          if (!missDotEl) {
+            missDotEl = document.createElement("i");
+            missDotEl.className = "fa-solid fa-tag thumb-missing-id-dot";
+            const textSpan = nameEl.querySelector(".thumb-name-text");
+            if (textSpan) {
+              nameEl.insertBefore(missDotEl, textSpan);
+            } else {
+              nameEl.insertBefore(missDotEl, nameEl.firstChild);
+            }
+          }
+          missDotEl.title = `Thông báo: ${img.missing_id_count || 1} nhãn thiếu Group ID`;
+        } else if (missDotEl) {
+          missDotEl.remove();
         }
       }
 
@@ -5451,8 +5567,9 @@
       const frag = document.createDocumentFragment();
       images.forEach(img => {
         const hasOverlap = Boolean(img.has_overlap);
+        const hasMissingId = Boolean(img.has_missing_id);
         const d = document.createElement("div");
-        d.className = `thumb-item ${img.filename === currentImageName ? 'active' : ''} ${hasOverlap ? 'has-overlap' : ''}`.trim();
+        d.className = `thumb-item ${img.filename === currentImageName ? 'active' : ''} ${hasOverlap ? 'has-overlap' : ''} ${hasMissingId ? 'has-missing-id' : ''}`.trim();
         d.onclick = () => selectImage(img.filename);
         const safeThumbUrl = getThumbUrl(img);
         const splitBadge = img.split
@@ -5461,6 +5578,9 @@
         const overlapIcon = hasOverlap
           ? `<i class="fa-solid fa-circle-exclamation thumb-overlap-dot" title="Cảnh báo: ${img.overlap_count || 1} vùng trùng nhãn"></i>`
           : "";
+        const missingIdIcon = hasMissingId
+          ? `<i class="fa-solid fa-tag thumb-missing-id-dot" title="Thông báo: ${img.missing_id_count || 1} nhãn thiếu Group ID"></i>`
+          : "";
         const imgAttr = obs
           ? `src="${THUMB_PLACEHOLDER}" data-src="${safeThumbUrl}"`
           : `src="${safeThumbUrl}"`;
@@ -5468,7 +5588,7 @@
           <img ${imgAttr} loading="lazy" decoding="async" alt="${escapeHtml(img.filename)}">
           ${splitBadge}
           <button type="button" class="thumb-delete-btn" title="Loại bỏ ảnh không đạt (${escapeHtml(img.filename)})" aria-label="Loại bỏ ảnh ${escapeHtml(img.filename)}">&times;</button>
-          <div class="thumb-name" title="${escapeHtml(img.filename)}">${overlapIcon}<span class="thumb-name-text">${escapeHtml(img.filename)}</span></div>
+          <div class="thumb-name" title="${escapeHtml(img.filename)}">${overlapIcon}${missingIdIcon}<span class="thumb-name-text">${escapeHtml(img.filename)}</span></div>
           ${img.annotations_count > 0 ? `<div class="thumb-badge">${img.annotations_count}</div>` : ''}
         `;
         const delBtn = d.querySelector(".thumb-delete-btn");
@@ -5590,6 +5710,87 @@
       });
     }
 
+    function getMissingIdAnnotations(list = annotations) {
+      const missing = [];
+      if (!Array.isArray(list)) return missing;
+      list.forEach((ann, idx) => {
+        if (!ann || typeof ann !== "object") return;
+        if (!hasGroupId(ann)) {
+          const cls = ann.class_name || "object";
+          missing.push({
+            index: idx,
+            class_name: cls,
+            label: `${cls} #${idx + 1}`
+          });
+        }
+      });
+      return missing;
+    }
+
+    function updateMissingIdAlertUI() {
+      const missingList = currentImageName ? getMissingIdAnnotations(annotations) : [];
+      const missingIdxSet = new Set(missingList.map(m => m.index));
+
+      if (currentImageName && typeof images !== "undefined" && Array.isArray(images)) {
+        const cur = images.find(i => i.filename === currentImageName);
+        if (cur) {
+          cur.has_missing_id = missingList.length > 0;
+          cur.missing_id_count = missingList.length;
+        }
+        if (typeof syncThumbnailMeta === "function") {
+          syncThumbnailMeta(currentImageName);
+        }
+      }
+
+      if (typeof document === "undefined") return;
+
+      const banner = document.getElementById("missingIdAlertBanner");
+      const textEl = document.getElementById("missingIdAlertText");
+      if (banner && textEl) {
+        if (missingList.length === 0) {
+          banner.style.display = "none";
+          banner.title = "";
+        } else {
+          const shown = missingList.slice(0, 3).map(m => m.label);
+          const extra = missingList.length - shown.length;
+          const summary = shown.join(", ") + (extra > 0 ? ` (+${extra} nhãn khác)` : "");
+          textEl.innerText = `Phát hiện ${missingList.length} nhãn thiếu Group ID: ${summary}`;
+          banner.title = missingList.map(m => m.label).join("\n");
+          banner.style.display = "flex";
+        }
+      }
+
+      document.querySelectorAll("#annotationList .ann-item[data-ann-idx]").forEach(row => {
+        const idx = parseInt(row.dataset.annIdx, 10);
+        const isMissing = missingIdxSet.has(idx);
+        const tagEl = row.querySelector(".ann-missing-id-tag");
+        row.classList.toggle("has-missing-id", isMissing);
+        if (tagEl) {
+          tagEl.style.display = isMissing ? "inline-flex" : "none";
+          tagEl.title = isMissing ? "Nhãn này chưa được gán Group ID" : "";
+        }
+      });
+    }
+
+    function focusNextMissingIdAnnotation() {
+      const missingList = getMissingIdAnnotations(annotations);
+      if (missingList.length === 0) {
+        if (typeof showToast === "function") showToast("Tất cả nhãn trên ảnh đã có Group ID!");
+        return false;
+      }
+      let target = missingList.find(m => selectedAnnotationIndex !== null && m.index > selectedAnnotationIndex);
+      if (!target) target = missingList[0];
+      if (typeof selectAnnotation === "function") {
+        selectAnnotation(target.index, "center");
+      } else {
+        selectedAnnotationIndex = target.index;
+      }
+      if (typeof openCanvasQuickIdPopover === "function") {
+        openCanvasQuickIdPopover(target.index);
+      }
+      return true;
+    }
+
     async function autoFixOverlaps() {
       if (!currentImageName || isAutoFixingOverlap || !annotations.length) return;
       isAutoFixingOverlap = true;
@@ -5625,10 +5826,13 @@
           cur.annotations_count = annotations.length;
           cur.has_overlap = Boolean(data.has_overlap);
           cur.overlap_count = data.overlap_count || 0;
+          cur.has_missing_id = Boolean(data.has_missing_id);
+          cur.missing_id_count = data.missing_id_count || 0;
         }
 
         updateAnnotationUI();
         updateOverlapAlertUI();
+        updateMissingIdAlertUI();
         syncThumbnailMeta(currentImageName);
         redraw();
 
@@ -5659,6 +5863,8 @@
       selectedAnnotationIndex = null;
       currentOverlaps = [];
       updateOverlapAlertUI();
+      const missBanner = document.getElementById("missingIdAlertBanner");
+      if (missBanner) missBanner.style.display = "none";
       setActiveGroupId(null);
       historyStack = [];
       manualPolyPoints = [];
@@ -5747,6 +5953,8 @@
           cur.annotations_count = annotations.length;
           cur.has_overlap = Boolean(data.has_overlap);
           cur.overlap_count = data.overlap_count || 0;
+          cur.has_missing_id = Boolean(data.has_missing_id);
+          cur.missing_id_count = data.missing_id_count || 0;
         }
       } catch (e) {
         if (currentImageName !== filename) return;
@@ -5780,6 +5988,8 @@
           if (cur) {
             cur.has_overlap = Boolean(data.has_overlap);
             cur.overlap_count = data.overlap_count || 0;
+            cur.has_missing_id = Boolean(data.has_missing_id);
+            cur.missing_id_count = data.missing_id_count || 0;
           }
           if (item.imageName === currentImageName) {
             currentOverlaps = data.overlaps || [];
@@ -5898,6 +6108,7 @@
             <span class="type-pill-badge ${isBbox ? 'bbox' : ''}">${isBbox ? 'BOX' : 'POLY'}</span>
             <span style="color:#94a3b8; font-size:10px; font-weight:600;">#${idx+1}</span>
             <span class="ann-overlap-tag"><i class="fa-solid fa-triangle-exclamation"></i></span>
+            <span class="ann-missing-id-tag">ID?</span>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
             <button onclick="event.stopPropagation(); removeAnnotation(${idx})" class="btn-del-ann" title="Xóa nhãn này">&times;</button>
@@ -5907,6 +6118,7 @@
       });
       list.scrollTop = prevScrollTop;
       updateOverlapAlertUI();
+      updateMissingIdAlertUI();
     }
 
     function removeAnnotation(idx) {
@@ -5975,6 +6187,15 @@
         if (activeProjectId !== reqProject) return;
 
         setActiveGroupId(null);
+        if (data.cleared_annotations > 0) {
+          images.forEach(img => {
+            if ((img.annotations_count || 0) > 0) {
+              img.has_missing_id = true;
+              img.missing_id_count = img.annotations_count;
+              syncThumbnailMeta(img.filename);
+            }
+          });
+        }
         if (currentImageName === reqImage) {
           annotations.forEach(ann => {
             delete ann.group_id;
@@ -6726,6 +6947,14 @@
             ctx.lineWidth = 2.4;
             ctx.stroke();
             ctx.restore();
+          } else if (!annHasGid) {
+            ctx.strokeStyle = "#2563eb";
+            ctx.lineWidth = 4.2;
+            ctx.stroke();
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
           } else {
             ctx.strokeStyle = color;
             ctx.lineWidth = 2.2;
@@ -6744,7 +6973,7 @@
           const fontSize = Math.round((isSelected ? 8.5 : 7.5) * labelScale * 10) / 10;
           ctx.font = `bold ${fontSize}px sans-serif`;
           const kindTag = (ann.type === "bbox") ? "[BOX] " : "";
-          const groupTag = annHasGid ? `[ID:${ann.group_id}] ` : "";
+          const groupTag = annHasGid ? `[ID:${ann.group_id}] ` : "[Thiếu ID] ";
           const labelText = isSelected
             ? `★ ${groupTag}${kindTag}${ann.class_name} #${idx + 1}`
             : `${groupTag}${kindTag}${ann.class_name} #${idx + 1}`;
