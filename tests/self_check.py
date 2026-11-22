@@ -1219,6 +1219,128 @@ assert(textCalls.some(t => t.includes("[ID:0] ripe #1")), "group_id=0 still rend
         assert proc.returncode == 0, f"JS missing-ID check failed: {proc.stderr or proc.stdout}"
 
 
+def check_selected_pulse_ui():
+    html_path = os.path.join(ROOT_DIR, "static", "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    for marker in (
+        "annSelectedPulse",
+        "annSelectedMissingIdPulse",
+        "annSelectedOverlapPulse",
+        "getSelectedPulseFactor",
+        "syncSelectedPulseLoop",
+    ):
+        assert marker in html, f"missing selected pulse marker: {marker}"
+
+    node_exe = shutil.which("node")
+    if node_exe:
+        js_check = r"""
+const fs = require("fs");
+const vm = require("vm");
+const html = fs.readFileSync(process.argv[1], "utf8");
+const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+const scriptSrc = scripts.sort((a, b) => b.length - a.length)[0];
+new vm.Script(scriptSrc);
+const pulseSrc =
+  scriptSrc.match(/let selectedPulseRafId[\s\S]*?function syncSelectedPulseLoop[\s\S]*?\n    \}/)[0] + "\n" +
+  scriptSrc.match(/function hasGroupId[\s\S]*?\n    \}/)[0] + "\n" +
+  scriptSrc.match(/function redraw\(\)[\s\S]*?\n    \}/)[0];
+
+let fakeNow = 0;
+let rafIdSeq = 1;
+const cancelledIds = [];
+const scheduledIds = [];
+const strokeCalls = [];
+const fillCalls = [];
+const mockCtx = {
+  strokeStyle: "",
+  lineWidth: 1,
+  fillStyle: "",
+  font: "",
+  lineJoin: "",
+  miterLimit: 2,
+  clearRect: () => {},
+  drawImage: () => {},
+  beginPath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  closePath: () => {},
+  arc: () => {},
+  save: () => {},
+  restore: () => {},
+  setLineDash: () => {},
+  stroke: () => { strokeCalls.push({ style: mockCtx.strokeStyle, width: mockCtx.lineWidth }); },
+  fill: () => { fillCalls.push(mockCtx.fillStyle); },
+  strokeText: () => {},
+  fillText: () => {}
+};
+
+const ctx = {
+  Date: { now: () => fakeNow },
+  requestAnimationFrame: () => { const id = rafIdSeq++; scheduledIds.push(id); return id; },
+  cancelAnimationFrame: (id) => { cancelledIds.push(id); },
+  CLASSES: [{ name: "calyx", color: "#a855f7" }, { name: "ripe", color: "#ef4444" }],
+  annotations: [
+    { class_name: "ripe", group_id: 1, polygon: [[0,0],[20,0],[20,20]] },
+    { class_name: "calyx", group_id: 1, polygon: [[30,0],[50,0],[50,20]] }
+  ],
+  selectedAnnotationIndex: 1,
+  activeTool: "select",
+  isErasing: false,
+  isDragging: false,
+  isDrawingLasso: false,
+  isDrawingFreehand: false,
+  manualPolyPoints: [],
+  lassoPoints: [],
+  freehandPoints: [],
+  eraserStrokes: [],
+  dragCurrent: {},
+  maskFillActive: true,
+  zoomLevel: 1.0,
+  baseImage: { complete: false, naturalWidth: 0 },
+  canvas: { width: 200, height: 100 },
+  ctx: mockCtx,
+  getGroupColor: () => "#2563eb",
+  getZoomInv: () => 1
+};
+vm.runInNewContext(pulseSrc, ctx);
+const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+
+const fMid = ctx.getSelectedPulseFactor(0);
+const fPeak = ctx.getSelectedPulseFactor(350);   // 1400 / 4 -> sin(pi/2) = 1 -> 1.0
+const fTrough = ctx.getSelectedPulseFactor(1050); // 3 * 1400 / 4 -> sin(3pi/2) = -1 -> 0.0
+assert(Math.abs(fMid - 0.5) < 1e-6, "t=0 pulse must be 0.5");
+assert(Math.abs(fPeak - 1.0) < 1e-6, "t=350ms pulse must peak at 1.0");
+assert(Math.abs(fTrough - 0.0) < 1e-6, "t=1050ms pulse must trough at 0.0");
+
+// Test redraw() at trough (dim) vs peak (bright)
+fakeNow = 1050;
+ctx.redraw();
+const dimFill = fillCalls[1];
+const dimWidths = strokeCalls.map(s => s.width);
+
+strokeCalls.length = 0;
+fillCalls.length = 0;
+fakeNow = 350;
+ctx.redraw();
+const brightFill = fillCalls[1];
+const brightWidths = strokeCalls.map(s => s.width);
+
+assert(dimFill === "#a855f71e", "trough fill must be #a855f71e, got " + dimFill);
+assert(brightFill === "#a855f7a8", "peak fill must be #a855f7a8, got " + brightFill);
+assert(Math.max(...brightWidths) > Math.max(...dimWidths), "peak stroke width must exceed trough width");
+
+// Test syncSelectedPulseLoop starts and cancels RAF cleanly
+ctx.syncSelectedPulseLoop();
+assert(scheduledIds.length === 1, "loop must schedule RAF when annotation selected");
+ctx.selectedAnnotationIndex = null;
+ctx.syncSelectedPulseLoop();
+assert(cancelledIds.length === 1 && cancelledIds[0] === scheduledIds[0], "loop must cancel RAF on deselect");
+"""
+        proc = subprocess.run([node_exe, "-e", js_check, html_path], capture_output=True, text=True)
+        assert proc.returncode == 0, f"JS selected pulse check failed: {proc.stderr or proc.stdout}"
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         check_device_manager(tmp)
@@ -1231,6 +1353,7 @@ def main():
         check_clear_group_id_ui()
         check_custom_shortcuts_and_navigation_ui()
         check_missing_group_id_alert_and_blue_border(tmp)
+        check_selected_pulse_ui()
     print("[PASS] All RoboLabel AI self-checks passed.")
 
 
