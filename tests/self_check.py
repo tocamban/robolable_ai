@@ -866,6 +866,153 @@ assert(setupSrc.includes('e.key === "Escape"') && setupSrc.includes("e.stopPropa
         assert proc.returncode == 0, f"JS clear group-id check failed: {proc.stderr or proc.stdout}"
 
 
+def check_custom_shortcuts_and_navigation_ui():
+    html_path = os.path.join(ROOT_DIR, "static", "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    for marker in (
+        "shortcutModal",
+        "btnOpenShortcuts",
+        "btnPrevClassNav",
+        "btnNextClassNav",
+        "btnPrevAnnNav",
+        "btnNextAnnNav",
+        "guideShortcutTableBody",
+        "SHORTCUT_DEFS",
+        "normalizeShortcutEvent",
+        "setCustomShortcut",
+        "resetSingleShortcut",
+        "resetAllShortcuts",
+        "cycleAnnotation",
+        "cycleClass",
+        "cycleImage",
+    ):
+        assert marker in html, f"missing custom shortcuts/navigation marker: {marker}"
+
+    node_exe = shutil.which("node")
+    if node_exe:
+        js_check = r"""
+const fs = require("fs");
+const vm = require("vm");
+const html = fs.readFileSync(process.argv[1], "utf8");
+const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+const scriptSrc = scripts.sort((a, b) => b.length - a.length)[0];
+new vm.Script(scriptSrc);
+const shortcutSrc = scriptSrc.match(/const SHORTCUT_STORAGE_KEY[\s\S]*?function initCustomShortcuts[\s\S]*?\n    \}/)[0];
+
+const store = {};
+const ctx = {
+  localStorage: {
+    getItem: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
+    setItem: (k, v) => { store[k] = String(v); },
+    removeItem: (k) => { delete store[k]; }
+  },
+  CLASSES: [
+    { name: "almost_ripe", color: "#f97316" },
+    { name: "calyx", color: "#a855f7" },
+    { name: "stem", color: "#eab308" },
+    { name: "unripe", color: "#22c55e" },
+    { name: "ripe", color: "#ef4444" }
+  ],
+  currentClass: "calyx",
+  annotations: [],
+  selectedAnnotationIndex: null,
+  images: [{ filename: "a.jpg" }, { filename: "b.jpg" }],
+  currentImageName: "a.jpg",
+  selectedHistory: [],
+  toastMessages: [],
+  showToast: (m) => { ctx.toastMessages.push(m); },
+  hasGroupId: (ann) => Boolean(ann && ann.group_id !== undefined && ann.group_id !== null && ann.group_id !== ""),
+  selectAnnotation: (idx) => {
+    ctx.selectedAnnotationIndex = idx;
+    if (ctx.annotations[idx]) ctx.currentClass = ctx.annotations[idx].class_name;
+    ctx.selectedHistory.push(idx);
+  },
+  selectClass: (name) => {
+    ctx.currentClass = name;
+    if (ctx.selectedAnnotationIndex !== null && ctx.annotations[ctx.selectedAnnotationIndex]) {
+      ctx.annotations[ctx.selectedAnnotationIndex].class_name = name;
+    }
+  },
+  selectImage: (fn) => { ctx.currentImageName = fn; }
+};
+
+const runTests = `
+  const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+
+  // 1. Default shortcuts must all be unique and non-reserved
+  const defaultSet = new Set(SHORTCUT_DEFS.map(d => d.defaultKey));
+  assert(defaultSet.size === SHORTCUT_DEFS.length, "default shortcut keys must be unique");
+  for (const d of SHORTCUT_DEFS) {
+    assert(!isReservedShortcutKey(d.defaultKey), "reserved default key: " + d.defaultKey);
+  }
+
+  // 2. normalizeShortcutEvent (including Vietnamese IME fallback)
+  assert(normalizeShortcutEvent({ key: "s" }) === "S", "lowercase s -> S");
+  assert(normalizeShortcutEvent({ key: "z", ctrlKey: true }) === "Ctrl+Z", "ctrl+z -> Ctrl+Z");
+  assert(normalizeShortcutEvent({ key: "ArrowUp" }) === "ArrowUp", "ArrowUp preserved");
+  assert(normalizeShortcutEvent({ key: "ư", code: "BracketLeft" }) === "[", "Vietnamese IME [ -> [");
+  assert(normalizeShortcutEvent({ key: "ư", code: "KeyW" }) === "W", "Vietnamese IME w -> W");
+  assert(normalizeShortcutEvent({ key: "Control" }) === "", "bare modifier ignored");
+
+  // 3. setCustomShortcut, auto-swap on conflict, and reserved rejection
+  loadCustomShortcuts();
+  assert(setCustomShortcut("tool_smart_poly", "5").ok === false, "bare digit 5 must be rejected");
+  assert(setCustomShortcut("tool_smart_poly", "Enter").ok === false, "Enter must be rejected");
+  assert(setCustomShortcut("tool_smart_poly", "Escape").ok === false, "Escape must be rejected");
+
+  const r1 = setCustomShortcut("tool_smart_poly", "Q");
+  assert(r1.ok === true && r1.swappedWith === null, "bind Q to smart_poly");
+  assert(matchShortcutAction({ key: "q" }) === "tool_smart_poly", "match custom Q");
+
+  const r2 = setCustomShortcut("tool_smart_poly", "P");
+  assert(r2.ok === true && r2.swappedWith === "tool_poly_manual" && r2.swappedTo === "Q", "conflict swaps P and Q");
+  assert(getShortcutFor("tool_smart_poly") === "P" && getShortcutFor("tool_poly_manual") === "Q", "swapped values persisted");
+
+  // Reload from localStorage
+  loadCustomShortcuts();
+  assert(getShortcutFor("tool_smart_poly") === "P" && getShortcutFor("tool_poly_manual") === "Q", "custom shortcuts persist across reload");
+
+  // 4. Reset single & reset all
+  assert(resetSingleShortcut("tool_smart_poly") === true, "reset single succeeds");
+  assert(getShortcutFor("tool_smart_poly") === "S", "restored S");
+  assert(resetAllShortcuts() === true, "reset all succeeds");
+  assert(getShortcutFor("tool_poly_manual") === "P", "all restored to defaults");
+
+  // 5. cycleClass without selection & with selection
+  assert(cycleClass(1) === true && currentClass === "stem", "cycleClass(1): calyx -> stem");
+  assert(cycleClass(-1) === true && currentClass === "calyx", "cycleClass(-1): stem -> calyx");
+  assert(cycleClass(-1) === true && currentClass === "almost_ripe", "cycleClass(-1): calyx -> almost_ripe");
+  assert(cycleClass(-1) === true && currentClass === "ripe", "cycleClass(-1) wraps to ripe");
+
+  // 6. cycleAnnotation navigation + cycling class on selected annotation
+  assert(cycleAnnotation(1) === false, "empty annotations returns false");
+  annotations = [
+    { class_name: "ripe", type: "polygon", polygon: [[0,0],[10,0],[10,10]] },
+    { class_name: "calyx", type: "polygon", polygon: [[20,0],[30,0],[30,10]] },
+    { class_name: "stem", type: "polygon", polygon: [[40,0],[50,0],[50,10]] }
+  ];
+  selectedAnnotationIndex = null;
+  assert(cycleAnnotation(1) === true && selectedAnnotationIndex === 0 && currentClass === "ripe", "first forward picks 0");
+  assert(cycleAnnotation(1) === true && selectedAnnotationIndex === 1 && currentClass === "calyx", "second forward picks 1");
+  assert(cycleAnnotation(1) === true && selectedAnnotationIndex === 2 && currentClass === "stem", "third forward picks 2");
+  assert(cycleAnnotation(1) === true && selectedAnnotationIndex === 0, "wraps forward to 0");
+  assert(cycleAnnotation(-1) === true && selectedAnnotationIndex === 2, "wraps backward to 2");
+
+  // With annotation 2 selected, cycleClass updates its class_name too
+  assert(cycleClass(1) === true && currentClass === "unripe" && annotations[2].class_name === "unripe", "cycleClass updates selected annotation class");
+
+  // 7. cycleImage navigation
+  assert(cycleImage(1) === true && currentImageName === "b.jpg", "cycleImage forward to b.jpg");
+  assert(cycleImage(-1) === true && currentImageName === "a.jpg", "cycleImage backward to a.jpg");
+`;
+
+vm.runInNewContext(shortcutSrc + "\n" + runTests, ctx);
+"""
+        proc = subprocess.run([node_exe, "-e", js_check, html_path], capture_output=True, text=True)
+        assert proc.returncode == 0, f"JS custom shortcuts/navigation check failed: {proc.stderr or proc.stdout}"
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         check_device_manager(tmp)
@@ -876,6 +1023,7 @@ def main():
         check_sidebar_split_and_scroll_ui()
         check_canvas_quick_id_ui()
         check_clear_group_id_ui()
+        check_custom_shortcuts_and_navigation_ui()
     print("[PASS] All RoboLabel AI self-checks passed.")
 
 

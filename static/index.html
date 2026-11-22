@@ -214,13 +214,24 @@
       justify-content: space-between;
       padding: 6px 8px;
       border-radius: 6px;
+      border: 1px solid transparent;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background 0.15s, border-color 0.15s;
       margin-bottom: 2px;
     }
 
-    .class-item:hover, .class-item.active {
+    .class-item:hover {
       background: #f1f5f9;
+    }
+
+    .class-item.active {
+      background: #ede9fe;
+      border-color: #c4b5fd;
+    }
+
+    .class-item.active .class-name-label {
+      color: #5b21b6;
+      font-weight: 600;
     }
 
     .class-dot {
@@ -1715,6 +1726,208 @@
       border-bottom: 1px solid #f1f5f9;
       color: #1e293b;
     }
+
+    /* Quick Navigation & Custom Keyboard Shortcuts */
+    .btn-shortcut-header {
+      background: #f5f3ff;
+      color: #6d28d9;
+      border: 1px solid #ddd6fe;
+      padding: 6px 11px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-shortcut-header:hover {
+      background: #ede9fe;
+      border-color: #a78bfa;
+      color: #5b21b6;
+    }
+    .nav-shortcut-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .nav-step-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 6px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      color: #334155;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      line-height: 1.2;
+    }
+    .nav-step-btn:hover {
+      background: #ede9fe;
+      border-color: #c4b5fd;
+      color: #6d28d9;
+    }
+    .kbd-mini {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      min-width: 14px;
+      height: 14px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-bottom-width: 1.5px;
+      border-radius: 3px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #475569;
+    }
+    .modal-card.modal-shortcuts {
+      width: 680px;
+      max-width: 95vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-card.modal-shortcuts .modal-body {
+      overflow-y: auto;
+      max-height: calc(90vh - 118px);
+      gap: 12px;
+    }
+    .shortcut-group-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .shortcut-list {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .shortcut-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 12px;
+    }
+    .shortcut-row:last-child {
+      border-bottom: none;
+    }
+    .shortcut-row:hover {
+      background: #f8fafc;
+    }
+    .shortcut-row-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      flex: 1;
+    }
+    .shortcut-row-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .shortcut-bind-btn {
+      min-width: 96px;
+      padding: 5px 10px;
+      background: #f1f5f9;
+      border: 1.5px solid #cbd5e1;
+      border-bottom-width: 2.5px;
+      border-radius: 7px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #1e293b;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .shortcut-bind-btn:hover {
+      background: #ede9fe;
+      border-color: #a78bfa;
+      color: #5b21b6;
+    }
+    .shortcut-bind-btn.recording {
+      background: #7c3aed;
+      border-color: #5b21b6;
+      color: #ffffff;
+      animation: shortcutPulse 1.1s infinite ease-in-out;
+    }
+    @keyframes shortcutPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.35); }
+      50% { box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12); }
+    }
+    .shortcut-reset-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      color: #64748b;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      transition: all 0.15s;
+    }
+    .shortcut-reset-btn:hover:not(:disabled) {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #dc2626;
+    }
+    .shortcut-reset-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    .shortcut-status-bar {
+      display: none;
+      padding: 8px 11px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .shortcut-status-bar.info {
+      display: block;
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      color: #166534;
+    }
+    .shortcut-status-bar.warn {
+      display: block;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+    }
+    .shortcut-status-bar.error {
+      display: block;
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #b91c1c;
+    }
+
     @media (max-width: 1240px) {
       header { padding: 0 8px; gap: 6px; }
       .top-left, .top-right { gap: 5px; }
@@ -1722,7 +1935,7 @@
       .model-badge, .autosave-badge { padding: 3px 7px; font-size: 10.5px; }
       .sam-model-select { max-width: 112px; font-size: 10.5px; }
       .device-pill span { max-width: 125px; overflow: hidden; text-overflow: ellipsis; }
-      .btn-guide-header, .btn-project-mgr, .btn-train { padding: 5px 8px; font-size: 11px; }
+      .btn-guide-header, .btn-shortcut-header, .btn-project-mgr, .btn-train { padding: 5px 8px; font-size: 11px; }
     }
     @media (max-width: 1080px) {
       header {
@@ -1788,6 +2001,9 @@
     </div>
     <div class="top-right">
       <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.5 • Nhấn để xem điểm mới bản cập nhật">v1.5</span>
+      <button type="button" class="btn-shortcut-header" id="btnOpenShortcuts" onclick="openShortcutModal()" title="Cài đặt & tùy chỉnh phím tắt (Phím K)">
+        <i class="fa-regular fa-keyboard"></i> Phím tắt
+      </button>
       <button type="button" class="btn-guide-header" id="btnOpenGuide" onclick="openGuideModal('overview')" title="Xem hướng dẫn sử dụng giao diện & công cụ (Phím ? hoặc F1)">
         <i class="fa-solid fa-book-open"></i> Hướng dẫn
       </button>
@@ -1818,7 +2034,16 @@
         
         <div class="section-title">
           <span>Classes</span>
-          <span style="font-size: 10px; color: #94a3b8;">Click để chọn</span>
+          <div class="nav-shortcut-group">
+            <button type="button" class="nav-step-btn" id="btnPrevClassNav" onclick="cycleClass(-1)" title="Chuyển Class trước (Phím ↑)">
+              <i class="fa-solid fa-chevron-up"></i>
+              <span class="kbd-mini" id="kbdHintPrevClass">↑</span>
+            </button>
+            <button type="button" class="nav-step-btn" id="btnNextClassNav" onclick="cycleClass(1)" title="Chuyển Class tiếp theo (Phím ↓)">
+              <i class="fa-solid fa-chevron-down"></i>
+              <span class="kbd-mini" id="kbdHintNextClass">↓</span>
+            </button>
+          </div>
         </div>
 
         <!-- Auto-Classify Toggle Switch -->
@@ -1855,11 +2080,23 @@
       <div id="sidebarSplitter" class="sidebar-splitter" role="separator" aria-orientation="horizontal" aria-label="Kéo để thay đổi kích thước giữa Classes và Current Objects" title="Kéo lên/xuống để chỉnh độ cao Classes và Current Objects (Double-click để đặt lại)" tabindex="0"></div>
 
       <div class="panel-section sidebar-bottom-section" id="objectsPanelSection">
-        <div class="section-title">
+        <div class="section-title" style="gap:4px; flex-wrap:wrap;">
           <span>Current Objects (<span id="totalAnnCount">0</span>)</span>
-          <button id="btnDeselectObj" onclick="deselectAnnotation()" style="display:none; background:none; border:none; color:var(--primary); font-size:11px; cursor:pointer; font-weight:600;">
-            <i class="fa-solid fa-xmark"></i> Bỏ chọn
-          </button>
+          <div style="display:flex; align-items:center; gap:4px; margin-left:auto;">
+            <div class="nav-shortcut-group">
+              <button type="button" class="nav-step-btn" id="btnPrevAnnNav" onclick="cycleAnnotation(-1)" title="Chuyển nhãn trước (Phím ,)">
+                <i class="fa-solid fa-chevron-left"></i>
+                <span class="kbd-mini" id="kbdHintPrevAnn">,</span>
+              </button>
+              <button type="button" class="nav-step-btn" id="btnNextAnnNav" onclick="cycleAnnotation(1)" title="Chuyển nhãn tiếp theo (Phím .)">
+                <span class="kbd-mini" id="kbdHintNextAnn">.</span>
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+            <button id="btnDeselectObj" onclick="deselectAnnotation()" style="display:none; background:none; border:none; color:var(--primary); font-size:10.5px; cursor:pointer; font-weight:600; white-space:nowrap;">
+              <i class="fa-solid fa-xmark"></i> Bỏ chọn
+            </button>
+          </div>
         </div>
 
         <!-- Selected Object Quick Action Panel -->
@@ -1990,7 +2227,7 @@
         <button class="tool-btn" id="toolPan" onclick="setTool('pan')" title="Di chuyển ảnh (Pan)">
           <i class="fa-solid fa-hand"></i>
         </button>
-        <button class="tool-btn" onclick="undoAnnotation()" title="Undo (Ctrl + Z)">
+        <button class="tool-btn" id="toolUndoBtn" onclick="undoAnnotation()" title="Undo (Ctrl + Z)">
           <i class="fa-solid fa-rotate-left"></i>
         </button>
         <div style="height:1px; background:#e2e8f0; margin:2px 4px;"></div>
@@ -3239,8 +3476,13 @@
             </div>
           </div>
 
-          <div style="font-size:12.5px; font-weight:700; color:#1e293b;">
-            <i class="fa-regular fa-keyboard" style="color:#7c3aed;"></i> Bảng phím tắt &amp; thao tác chuột nhanh
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <div style="font-size:12.5px; font-weight:700; color:#1e293b;">
+              <i class="fa-regular fa-keyboard" style="color:#7c3aed;"></i> Bảng phím tắt &amp; thao tác chuột nhanh
+            </div>
+            <button type="button" class="pill-btn" onclick="closeGuideModal(); openShortcutModal();" style="background:#ede9fe; color:#6d28d9; border-color:#c4b5fd; font-weight:600; display:inline-flex; align-items:center; gap:5px;">
+              <i class="fa-solid fa-sliders"></i> Tùy chỉnh phím tắt
+            </button>
           </div>
           <table class="guide-shortcut-table">
             <thead>
@@ -3249,7 +3491,7 @@
                 <th>Chức năng tương ứng</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="guideShortcutTableBody">
               <tr><td><span class="kbd-tag">S</span></td><td>Chọn nhanh công cụ <b>AI Smart Box</b> (kéo khung cho SAM tự tách viền)</td></tr>
               <tr><td><span class="kbd-tag">P</span></td><td>Chọn công cụ <b>Vẽ Polygon Thủ Công</b> (hoặc <b>Đắp thêm</b> khi đang chọn 1 object)</td></tr>
               <tr><td><span class="kbd-tag">F</span></td><td>Chọn công cụ <b>Vẽ Đường Bao Tự Do</b> (giữ kéo theo viền, nhả chuột tự nối khép kín)</td></tr>
@@ -3348,6 +3590,40 @@
     </div>
   </div>
 
+  <!-- Modal: Custom Keyboard Shortcuts -->
+  <div class="modal-overlay" id="shortcutModal" onclick="if (event.target === this) closeShortcutModal()">
+    <div class="modal-card modal-shortcuts">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-regular fa-keyboard"></i>
+          <span>Cài đặt &amp; Tùy chỉnh Phím tắt</span>
+        </div>
+        <button class="modal-close" onclick="closeShortcutModal()" aria-label="Đóng cài đặt phím tắt">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="guide-intro-banner" style="padding:10px 12px;">
+          <i class="fa-solid fa-sliders" style="font-size:17px; color:#6d28d9; flex-shrink:0;"></i>
+          <div>
+            Nhấn vào nút phím tắt rồi gõ phím mới để thay đổi (hỗ trợ <span class="kbd-tag">Ctrl</span> / <span class="kbd-tag">Alt</span> / <span class="kbd-tag">Shift</span> và tự động hoán đổi nếu trùng). Phím số <span class="kbd-tag">0</span>–<span class="kbd-tag">9</span> được giữ riêng để nhập nhanh Group ID.
+          </div>
+        </div>
+
+        <div id="shortcutModalStatus" class="shortcut-status-bar"></div>
+        <div id="shortcutModalBodyList" style="display:flex; flex-direction:column; gap:12px;"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="resetAllShortcuts()" style="margin-right:auto;">
+          <i class="fa-solid fa-arrow-rotate-left"></i> Khôi phục toàn bộ mặc định
+        </button>
+        <button type="button" class="btn-find-submit" onclick="closeShortcutModal()">
+          <i class="fa-solid fa-check"></i> Xong
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Message -->
   <div class="toast" id="toastMsg">
     <i class="fa-solid fa-circle-check" style="color:#4ade80;"></i>
@@ -3358,7 +3634,578 @@
     const APP_VERSION = "v1.5";
     const SEEN_VERSION_KEY = "robolabel_seen_version";
     const SIDEBAR_SPLIT_KEY = "robolabel_sidebar_top_height";
+    const SHORTCUT_STORAGE_KEY = "robolabel_custom_shortcuts";
     let preferredSidebarTopPx = null;
+
+    const SHORTCUT_GROUPS = [
+      { id: "navigation", title: "Điều hướng Nhãn, Class & Ảnh", icon: "fa-solid fa-arrows-up-down-left-right" },
+      { id: "tools", title: "Công cụ Vẽ & Chỉnh sửa", icon: "fa-solid fa-wand-magic-sparkles" },
+      { id: "actions", title: "Thao tác Nhãn & Hiển thị", icon: "fa-solid fa-bolt" }
+    ];
+
+    const SHORTCUT_DEFS = [
+      { id: "prev_class", group: "navigation", defaultKey: "ArrowUp", label: "Chuyển Class trước", desc: "Lùi lên Class trước (đổi Class nhãn nếu đang chọn)" },
+      { id: "next_class", group: "navigation", defaultKey: "ArrowDown", label: "Chuyển Class tiếp theo", desc: "Sang Class kế tiếp (đổi Class nhãn nếu đang chọn)" },
+      { id: "prev_annotation", group: "navigation", defaultKey: ",", label: "Chuyển Nhãn (Object) trước", desc: "Chọn & cuộn tới nhãn trước đó trên ảnh" },
+      { id: "next_annotation", group: "navigation", defaultKey: ".", label: "Chuyển Nhãn (Object) tiếp theo", desc: "Chọn & cuộn tới nhãn tiếp theo trên ảnh" },
+      { id: "prev_image", group: "navigation", defaultKey: "ArrowLeft", label: "Chuyển Ảnh trước", desc: "Mở ảnh trước đó trong danh sách Project" },
+      { id: "next_image", group: "navigation", defaultKey: "ArrowRight", label: "Chuyển Ảnh tiếp theo", desc: "Mở ảnh tiếp theo trong danh sách Project" },
+
+      { id: "tool_smart_poly", group: "tools", defaultKey: "S", label: "AI Smart Box", desc: "Kéo Box cho SAM tự tách viền", toolId: "toolSmartPoly", baseTitle: "AI Smart Box (Kéo Box tự nhận diện & chạy SAM)" },
+      { id: "tool_lasso", group: "tools", defaultKey: "L", label: "AI Lasso", desc: "Vẽ đường bao tự do chạy SAM", toolId: "toolLasso", baseTitle: "AI Lasso (Vẽ đường bao tự do tự nhận diện & chạy SAM)" },
+      { id: "tool_point_ai", group: "tools", defaultKey: "A", label: "AI Point", desc: "Click 1 điểm vào vật thể chạy SAM", toolId: "toolPointAI", baseTitle: "AI Point (Click chuột vào vật thể chạy SAM)" },
+      { id: "tool_poly_manual", group: "tools", defaultKey: "P", label: "Vẽ Polygon Thủ Công / Đắp thêm", desc: "Chấm từng đỉnh hoặc đắp thêm vùng thiếu", toolId: "toolManualPoly", baseTitle: "Vẽ Polygon Thủ Công (Click từng đỉnh để vẽ / Đắp thêm)" },
+      { id: "tool_poly_freehand", group: "tools", defaultKey: "F", label: "Vẽ Đường Bao Tự Do", desc: "Giữ chuột kéo theo viền, nhả chuột khép kín", toolId: "toolFreehandPoly", baseTitle: "Vẽ Đường Bao Tự Do (Giữ chuột di chuyển vẽ theo viền, nhả chuột tự nối khép kín)" },
+      { id: "tool_bbox", group: "tools", defaultKey: "B", label: "Bounding Box", desc: "Kéo khung chữ nhật thông thường", toolId: "toolBox", baseTitle: "Bounding Box thông thường" },
+      { id: "tool_eraser", group: "tools", defaultKey: "E", label: "Cục Tẩy Polygon", desc: "Xóa bớt vùng thừa của nhãn đang chọn", toolId: "toolEraser", baseTitle: "Cục Tẩy (Xóa bớt vùng thừa polygon đang chọn)" },
+      { id: "tool_select", group: "tools", defaultKey: "V", label: "Chọn & Kéo đỉnh Polygon", desc: "Chọn object hoặc kéo chỉnh từng đỉnh", toolId: "toolSelect", baseTitle: "Chọn & Kéo đỉnh Polygon" },
+      { id: "tool_pan", group: "tools", defaultKey: "H", label: "Bàn tay Di chuyển ảnh (Pan)", desc: "Kéo di chuyển vùng nhìn khi phóng to", toolId: "toolPan", baseTitle: "Di chuyển ảnh (Pan)" },
+
+      { id: "delete_annotation", group: "actions", defaultKey: "Delete", label: "Xóa nhãn đang chọn", desc: "Xóa object đang chọn (hỗ trợ Ctrl+Z hoàn tác)" },
+      { id: "undo", group: "actions", defaultKey: "Ctrl+Z", label: "Hoàn tác (Undo)", desc: "Hoàn tác thao tác nhãn hoặc khôi phục ảnh vừa xóa" },
+      { id: "eraser_decrease", group: "actions", defaultKey: "[", label: "Giảm cỡ Cục Tẩy (-5px)", desc: "Thu nhỏ bán kính đầu cục tẩy" },
+      { id: "eraser_increase", group: "actions", defaultKey: "]", label: "Tăng cỡ Cục Tẩy (+5px)", desc: "Phóng to bán kính đầu cục tẩy" },
+      { id: "group_id_decrease", group: "actions", defaultKey: "-", label: "Giảm Group ID mới (-1)", desc: "Giảm Group ID mặc định cho vùng vẽ mới" },
+      { id: "group_id_increase", group: "actions", defaultKey: "=", label: "Tăng Group ID mới (+1)", desc: "Tăng Group ID mặc định sang cụm tiếp theo" },
+      { id: "toggle_mask_fill", group: "actions", defaultKey: "M", label: "Bật/Tắt tô màu Mask", desc: "Hiện/ẩn lớp tô màu bán trong suốt" },
+      { id: "toggle_auto_classify", group: "actions", defaultKey: "C", label: "Bật/Tắt Tự nhận diện Class", desc: "Bật/tắt CLIP tự đoán Class khi dùng AI" },
+      { id: "autofix_overlap", group: "actions", defaultKey: "O", label: "Tự sửa vùng nhãn trùng", desc: "Tự động cắt phần đè theo thứ tự ưu tiên" },
+      { id: "open_shortcuts", group: "actions", defaultKey: "K", label: "Mở Cài đặt Phím tắt", desc: "Mở hộp thoại tùy chỉnh phím tắt" }
+    ];
+
+    const DEFAULT_SHORTCUTS = Object.fromEntries(SHORTCUT_DEFS.map(d => [d.id, d.defaultKey]));
+    let customShortcuts = { ...DEFAULT_SHORTCUTS };
+    let recordingShortcutId = null;
+
+    const SPECIAL_KEY_NAMES = {
+      ArrowUp: "ArrowUp",
+      ArrowDown: "ArrowDown",
+      ArrowLeft: "ArrowLeft",
+      ArrowRight: "ArrowRight",
+      Delete: "Delete",
+      Backspace: "Backspace",
+      Home: "Home",
+      End: "End",
+      PageUp: "PageUp",
+      PageDown: "PageDown",
+      Insert: "Insert",
+      Enter: "Enter",
+      Escape: "Escape",
+      Esc: "Escape",
+      " ": "Space",
+      Spacebar: "Space"
+    };
+
+    const CODE_KEY_FALLBACK = {
+      BracketLeft: "[",
+      BracketRight: "]",
+      Comma: ",",
+      Period: ".",
+      Minus: "-",
+      Equal: "=",
+      Slash: "/",
+      Backslash: "\\",
+      Semicolon: ";",
+      Quote: "'",
+      Backquote: "`",
+      Space: "Space",
+      NumpadAdd: "+",
+      NumpadSubtract: "-"
+    };
+
+    function normalizeShortcutEvent(e) {
+      if (!e) return "";
+      const rawKey = typeof e.key === "string" ? e.key : "";
+      const rawCode = typeof e.code === "string" ? e.code : "";
+      if (["Control", "Shift", "Alt", "Meta", "CapsLock", "NumLock", "ScrollLock", "Tab", "ContextMenu", "Dead"].includes(rawKey)) {
+        return "";
+      }
+
+      const hasCtrl = Boolean(e.ctrlKey || e.metaKey);
+      const hasAlt = Boolean(e.altKey);
+      const hasShift = Boolean(e.shiftKey);
+
+      let baseKey = "";
+      let isShiftedSymbol = false;
+
+      if (SPECIAL_KEY_NAMES[rawKey]) {
+        baseKey = SPECIAL_KEY_NAMES[rawKey];
+      } else if (/^F([1-9]|1[0-2])$/i.test(rawKey)) {
+        baseKey = rawKey.toUpperCase();
+      } else if (rawKey.length === 1 && /^[a-zA-Z]$/.test(rawKey)) {
+        baseKey = rawKey.toUpperCase();
+      } else if (rawKey.length === 1 && /^[0-9]$/.test(rawKey)) {
+        baseKey = rawKey;
+      } else if (rawKey.length === 1 && /^[\x21-\x7E]$/.test(rawKey)) {
+        baseKey = rawKey;
+        isShiftedSymbol = true;
+      } else if (/^Key([A-Z])$/.test(rawCode)) {
+        baseKey = rawCode.slice(3);
+      } else if (/^Digit([0-9])$/.test(rawCode)) {
+        baseKey = rawCode.slice(5);
+      } else if (/^Numpad([0-9])$/.test(rawCode)) {
+        baseKey = rawCode.slice(6);
+      } else if (CODE_KEY_FALLBACK[rawCode]) {
+        baseKey = CODE_KEY_FALLBACK[rawCode];
+      } else if (SPECIAL_KEY_NAMES[rawCode]) {
+        baseKey = SPECIAL_KEY_NAMES[rawCode];
+      } else if (/^F([1-9]|1[0-2])$/.test(rawCode)) {
+        baseKey = rawCode;
+      }
+
+      if (!baseKey) return "";
+
+      const parts = [];
+      if (hasCtrl) parts.push("Ctrl");
+      if (hasAlt) parts.push("Alt");
+      if (hasShift && !isShiftedSymbol) parts.push("Shift");
+      parts.push(baseKey);
+      return parts.join("+");
+    }
+
+    function formatShortcutKey(keyStr, compact = false) {
+      if (!keyStr) return "Chưa gán";
+      const tokenMap = compact ? {
+        ArrowUp: "↑",
+        ArrowDown: "↓",
+        ArrowLeft: "←",
+        ArrowRight: "→",
+        Delete: "Del",
+        Backspace: "Bksp",
+        Space: "Space",
+        ",": ",",
+        ".": "."
+      } : {
+        ArrowUp: "↑",
+        ArrowDown: "↓",
+        ArrowLeft: "←",
+        ArrowRight: "→",
+        Delete: "Del",
+        Backspace: "Backspace",
+        Space: "Space",
+        ",": ", (<)",
+        ".": ". (>)"
+      };
+      const parts = String(keyStr).split("+").map(p => tokenMap[p] || p);
+      return compact ? parts.join("+") : parts.join(" + ");
+    }
+
+    function isReservedShortcutKey(keyStr) {
+      if (!keyStr) return "Phím không hợp lệ.";
+      if (keyStr === "Escape" || keyStr === "Enter") {
+        return `Phím ${keyStr} được hệ thống giữ cố định để đóng hộp thoại / hoàn tất thao tác.`;
+      }
+      if (keyStr === "?" || keyStr === "F1") {
+        return `Phím ${keyStr} được giữ cố định để mở Hướng dẫn sử dụng.`;
+      }
+      if (/^[0-9]$/.test(keyStr)) {
+        return "Phím số 0–9 được giữ riêng để nhập nhanh Group ID trực tiếp trên Canvas.";
+      }
+      return "";
+    }
+
+    function loadCustomShortcuts() {
+      const merged = { ...DEFAULT_SHORTCUTS };
+      try {
+        if (typeof localStorage !== "undefined") {
+          const raw = localStorage.getItem(SHORTCUT_STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object") {
+              const used = new Set();
+              for (const def of SHORTCUT_DEFS) {
+                const candidate = typeof parsed[def.id] === "string" ? parsed[def.id].trim() : "";
+                if (candidate && !isReservedShortcutKey(candidate) && !used.has(candidate)) {
+                  merged[def.id] = candidate;
+                  used.add(candidate);
+                } else {
+                  used.delete(merged[def.id]);
+                }
+              }
+              // Đảm bảo không có khóa trùng sau khi gộp với mặc định
+              const seenKeys = new Map();
+              for (const def of SHORTCUT_DEFS) {
+                const k = merged[def.id];
+                if (seenKeys.has(k)) {
+                  const fallback = SHORTCUT_DEFS.map(d => d.defaultKey).find(dk => !seenKeys.has(dk));
+                  merged[def.id] = fallback || def.defaultKey;
+                }
+                seenKeys.set(merged[def.id], def.id);
+              }
+            }
+          }
+        }
+      } catch (_) {}
+      customShortcuts = merged;
+      return customShortcuts;
+    }
+
+    function saveCustomShortcuts() {
+      try {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(SHORTCUT_STORAGE_KEY, JSON.stringify(customShortcuts));
+        }
+      } catch (_) {}
+    }
+
+    function getShortcutFor(actionId) {
+      return customShortcuts[actionId] || DEFAULT_SHORTCUTS[actionId] || "";
+    }
+
+    function setCustomShortcut(actionId, rawKey) {
+      const def = SHORTCUT_DEFS.find(d => d.id === actionId);
+      if (!def) return { ok: false, error: "Không tìm thấy chức năng tương ứng.", swappedWith: null };
+      const normalized = String(rawKey || "").trim();
+      const reservedErr = isReservedShortcutKey(normalized);
+      if (reservedErr) return { ok: false, error: reservedErr, swappedWith: null };
+
+      const prevKey = customShortcuts[actionId];
+      if (prevKey === normalized) {
+        return { ok: true, key: normalized, swappedWith: null, swappedTo: null };
+      }
+
+      let swappedWith = null;
+      let swappedTo = null;
+      for (const other of SHORTCUT_DEFS) {
+        if (other.id !== actionId && customShortcuts[other.id] === normalized) {
+          customShortcuts[other.id] = prevKey;
+          swappedWith = other.id;
+          swappedTo = prevKey;
+          break;
+        }
+      }
+      customShortcuts[actionId] = normalized;
+      saveCustomShortcuts();
+      if (typeof syncShortcutHintsUI === "function") syncShortcutHintsUI();
+      return { ok: true, key: normalized, swappedWith, swappedTo };
+    }
+
+    function resetSingleShortcut(actionId) {
+      const def = SHORTCUT_DEFS.find(d => d.id === actionId);
+      if (!def) return false;
+      const res = setCustomShortcut(actionId, def.defaultKey);
+      if (typeof renderShortcutModal === "function") renderShortcutModal();
+      return res.ok;
+    }
+
+    function resetAllShortcuts() {
+      customShortcuts = { ...DEFAULT_SHORTCUTS };
+      recordingShortcutId = null;
+      try {
+        if (typeof localStorage !== "undefined") {
+          localStorage.removeItem(SHORTCUT_STORAGE_KEY);
+        }
+      } catch (_) {}
+      if (typeof syncShortcutHintsUI === "function") syncShortcutHintsUI();
+      if (typeof renderShortcutModal === "function") renderShortcutModal();
+      if (typeof showShortcutModalStatus === "function") {
+        showShortcutModalStatus("Đã khôi phục toàn bộ phím tắt về mặc định.", "info");
+      }
+      if (typeof showToast === "function") showToast("Đã khôi phục toàn bộ phím tắt mặc định");
+      return true;
+    }
+
+    function matchShortcutAction(e) {
+      const combo = normalizeShortcutEvent(e);
+      if (!combo) return null;
+      for (const def of SHORTCUT_DEFS) {
+        if (getShortcutFor(def.id) === combo) {
+          return def.id;
+        }
+      }
+      return null;
+    }
+
+    function cycleAnnotation(delta) {
+      if (!annotations || annotations.length === 0) {
+        if (typeof showToast === "function") showToast("Ảnh này chưa có nhãn nào để chuyển");
+        return false;
+      }
+      if (typeof commitCanvasQuickId === "function") commitCanvasQuickId();
+      if (typeof hideCanvasQuickIdPopover === "function") hideCanvasQuickIdPopover(false);
+
+      const n = annotations.length;
+      const step = delta >= 0 ? 1 : -1;
+      let nextIdx;
+      if (selectedAnnotationIndex === null || selectedAnnotationIndex < 0 || selectedAnnotationIndex >= n) {
+        nextIdx = step > 0 ? 0 : n - 1;
+      } else {
+        nextIdx = (selectedAnnotationIndex + step + n) % n;
+      }
+      if (typeof selectAnnotation === "function") {
+        selectAnnotation(nextIdx, "center");
+      } else {
+        selectedAnnotationIndex = nextIdx;
+        if (annotations[nextIdx]) currentClass = annotations[nextIdx].class_name;
+      }
+      const ann = annotations[nextIdx];
+      if (ann && typeof showToast === "function") {
+        const gidNote = (typeof hasGroupId === "function" && hasGroupId(ann)) ? ` [ID:${ann.group_id}]` : "";
+        showToast(`Đang chọn nhãn #${nextIdx + 1}/${n}: ${ann.class_name}${gidNote}`);
+      }
+      return true;
+    }
+
+    function cycleClass(delta) {
+      if (!CLASSES || CLASSES.length === 0) return false;
+      const n = CLASSES.length;
+      const step = delta >= 0 ? 1 : -1;
+      const curIdx = CLASSES.findIndex(c => c.name === currentClass);
+      let nextIdx;
+      if (curIdx === -1) {
+        nextIdx = step > 0 ? 0 : n - 1;
+      } else {
+        nextIdx = (curIdx + step + n) % n;
+      }
+      const nextClass = CLASSES[nextIdx].name;
+      const hadSelected = (selectedAnnotationIndex !== null && Boolean(annotations[selectedAnnotationIndex]));
+      if (typeof selectClass === "function") {
+        selectClass(nextClass);
+      } else {
+        currentClass = nextClass;
+      }
+      if (!hadSelected && typeof showToast === "function") {
+        showToast(`Đã chọn Class vẽ mới: '${nextClass}' (${nextIdx + 1}/${n})`);
+      }
+      return true;
+    }
+
+    function cycleImage(delta) {
+      if (!images || images.length === 0) return false;
+      const n = images.length;
+      const step = delta >= 0 ? 1 : -1;
+      const curIdx = images.findIndex(i => i.filename === currentImageName);
+      let nextIdx;
+      if (curIdx === -1) {
+        nextIdx = step > 0 ? 0 : n - 1;
+      } else {
+        nextIdx = (curIdx + step + n) % n;
+      }
+      const nextImg = images[nextIdx];
+      if (nextImg && nextImg.filename && nextImg.filename !== currentImageName && typeof selectImage === "function") {
+        selectImage(nextImg.filename);
+        return true;
+      }
+      return false;
+    }
+
+    function deleteSelectedAnnotation() {
+      if (selectedAnnotationIndex !== null && annotations[selectedAnnotationIndex]) {
+        const removed = annotations[selectedAnnotationIndex];
+        const removedNum = selectedAnnotationIndex + 1;
+        removeAnnotation(selectedAnnotationIndex);
+        showToast(`Đã xóa nhãn #${removedNum} (${removed.class_name}) — ${formatShortcutKey(getShortcutFor("undo"), true)} để hoàn tác`);
+        return true;
+      }
+      showToast("Chưa chọn nhãn nào để xóa");
+      return false;
+    }
+
+    function executeShortcutAction(actionId, e) {
+      switch (actionId) {
+        case "prev_class": return cycleClass(-1);
+        case "next_class": return cycleClass(1);
+        case "prev_annotation": return cycleAnnotation(-1);
+        case "next_annotation": return cycleAnnotation(1);
+        case "prev_image": return cycleImage(-1);
+        case "next_image": return cycleImage(1);
+        case "tool_smart_poly": return setTool("smart_poly");
+        case "tool_lasso": return setTool("lasso");
+        case "tool_point_ai": return setTool("point_ai");
+        case "tool_poly_manual": return setTool("poly_manual");
+        case "tool_poly_freehand": return setTool("poly_freehand");
+        case "tool_bbox": return setTool("bbox");
+        case "tool_eraser": return setTool("eraser");
+        case "tool_select": return setTool("select");
+        case "tool_pan": return setTool("pan");
+        case "delete_annotation": return deleteSelectedAnnotation();
+        case "undo": return undoAnnotation();
+        case "eraser_decrease": return setEraserRadius(eraserRadius - 5);
+        case "eraser_increase": return setEraserRadius(eraserRadius + 5);
+        case "group_id_decrease": return stepActiveGroupId(-1);
+        case "group_id_increase": return stepActiveGroupId(1);
+        case "toggle_mask_fill": return toggleMaskFill();
+        case "toggle_auto_classify": {
+          const cb = document.getElementById("autoClassifyToggle");
+          if (cb) {
+            cb.checked = !cb.checked;
+            toggleAutoClassify(cb);
+          }
+          return true;
+        }
+        case "autofix_overlap": return autoFixOverlaps();
+        case "open_shortcuts": return openShortcutModal();
+        default: return false;
+      }
+    }
+
+    function syncShortcutHintsUI() {
+      if (typeof document === "undefined") return;
+      const setTxt = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val;
+      };
+      const setTitle = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.title = val;
+      };
+
+      const prevClsKey = formatShortcutKey(getShortcutFor("prev_class"), true);
+      const nextClsKey = formatShortcutKey(getShortcutFor("next_class"), true);
+      const prevAnnKey = formatShortcutKey(getShortcutFor("prev_annotation"), true);
+      const nextAnnKey = formatShortcutKey(getShortcutFor("next_annotation"), true);
+      const openScKey = formatShortcutKey(getShortcutFor("open_shortcuts"), true);
+      const undoKey = formatShortcutKey(getShortcutFor("undo"));
+      const maskKey = formatShortcutKey(getShortcutFor("toggle_mask_fill"), true);
+      const autoFixKey = formatShortcutKey(getShortcutFor("autofix_overlap"), true);
+      const eraserDecKey = formatShortcutKey(getShortcutFor("eraser_decrease"), true);
+      const eraserIncKey = formatShortcutKey(getShortcutFor("eraser_increase"), true);
+
+      setTxt("kbdHintPrevClass", prevClsKey);
+      setTxt("kbdHintNextClass", nextClsKey);
+      setTxt("kbdHintPrevAnn", prevAnnKey);
+      setTxt("kbdHintNextAnn", nextAnnKey);
+
+      setTitle("btnPrevClassNav", `Chuyển Class trước (Phím ${prevClsKey})`);
+      setTitle("btnNextClassNav", `Chuyển Class tiếp theo (Phím ${nextClsKey})`);
+      setTitle("btnPrevAnnNav", `Chuyển nhãn (Object) trước (Phím ${prevAnnKey})`);
+      setTitle("btnNextAnnNav", `Chuyển nhãn (Object) tiếp theo (Phím ${nextAnnKey})`);
+      setTitle("btnOpenShortcuts", `Cài đặt & tùy chỉnh phím tắt (Phím ${openScKey})`);
+      setTitle("toolUndoBtn", `Undo (${undoKey})`);
+      setTitle("maskFillBtn", `Bật/Tắt tô màu Mask (Phím ${maskKey})`);
+      setTitle("btnAutoFixOverlap", `Tự động cắt trừ phần giao nhau theo thứ tự ưu tiên (Phím ${autoFixKey})`);
+
+      SHORTCUT_DEFS.forEach(def => {
+        if (!def.toolId) return;
+        const k = formatShortcutKey(getShortcutFor(def.id), true);
+        const extra = (def.id === "tool_eraser") ? ` • Cỡ tẩy: ${eraserDecKey} / ${eraserIncKey}` : "";
+        setTitle(def.toolId, `${def.baseTitle} - Phím ${k}${extra}`);
+      });
+
+      const guideBody = document.getElementById("guideShortcutTableBody");
+      if (guideBody) {
+        const dynamicRows = SHORTCUT_DEFS.map(def => {
+          const fmt = formatShortcutKey(getShortcutFor(def.id));
+          return `<tr><td><span class="kbd-tag">${escapeHtml(fmt)}</span></td><td><b>${escapeHtml(def.label)}</b> — ${escapeHtml(def.desc)}</td></tr>`;
+        }).join("");
+        const fixedRows = [
+          `<tr><td><b>Cuộn con lăn chuột</b></td><td>Phóng to / Thu nhỏ ảnh ngay tại vị trí con trỏ chuột</td></tr>`,
+          `<tr><td><span class="kbd-tag">0</span>–<span class="kbd-tag">9</span></td><td>Nhập nhanh <b>Group ID</b> ngay trên Canvas khi đang chọn nhãn</td></tr>`,
+          `<tr><td><span class="kbd-tag">Enter</span> / <span class="kbd-tag">Backspace</span></td><td>Hoàn tất đa giác thủ công (<span class="kbd-tag">Enter</span>) hoặc lùi lại 1 đỉnh (<span class="kbd-tag">Backspace</span> / <b>Chuột phải</b>)</td></tr>`,
+          `<tr><td><span class="kbd-tag">?</span> hoặc <span class="kbd-tag">F1</span></td><td>Mở nhanh bảng <b>Hướng dẫn sử dụng</b> (<span class="kbd-tag">Esc</span> để đóng)</td></tr>`
+        ].join("");
+        guideBody.innerHTML = dynamicRows + fixedRows;
+      }
+    }
+
+    function showShortcutModalStatus(msg = "", kind = "info") {
+      if (typeof document === "undefined") return;
+      const box = document.getElementById("shortcutModalStatus");
+      if (!box) return;
+      if (!msg) {
+        box.className = "shortcut-status-bar";
+        box.innerText = "";
+        return;
+      }
+      box.className = `shortcut-status-bar ${kind}`;
+      box.innerText = msg;
+    }
+
+    function renderShortcutModal() {
+      if (typeof document === "undefined") return;
+      const container = document.getElementById("shortcutModalBodyList");
+      if (!container) return;
+      container.innerHTML = SHORTCUT_GROUPS.map(grp => {
+        const items = SHORTCUT_DEFS.filter(d => d.group === grp.id);
+        const rowsHtml = items.map(def => {
+          const curKey = getShortcutFor(def.id);
+          const isRec = (recordingShortcutId === def.id);
+          const isDefault = (curKey === def.defaultKey);
+          const btnText = isRec ? "Nhấn phím mới..." : formatShortcutKey(curKey);
+          const defLabel = formatShortcutKey(def.defaultKey);
+          return `
+            <div class="shortcut-row">
+              <div class="shortcut-row-info">
+                <div style="font-weight:700; color:#1e293b;">${escapeHtml(def.label)}</div>
+                <div style="font-size:11px; color:#64748b;">${escapeHtml(def.desc)}</div>
+              </div>
+              <div class="shortcut-row-controls">
+                <button type="button" class="shortcut-bind-btn ${isRec ? 'recording' : ''}" data-shortcut-id="${def.id}" onclick="startRecordingShortcut('${def.id}')" title="Click để gán phím tắt mới">
+                  ${escapeHtml(btnText)}
+                </button>
+                <button type="button" class="shortcut-reset-btn" onclick="resetSingleShortcut('${def.id}')" title="Khôi phục mặc định (${escapeHtml(defLabel)})" ${isDefault ? 'disabled' : ''}>
+                  <i class="fa-solid fa-rotate-left"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("");
+        return `
+          <div>
+            <div class="shortcut-group-title"><i class="${grp.icon}" style="color:var(--primary);"></i> ${escapeHtml(grp.title)}</div>
+            <div class="shortcut-list">${rowsHtml}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function openShortcutModal() {
+      recordingShortcutId = null;
+      showShortcutModalStatus("");
+      renderShortcutModal();
+      const modal = document.getElementById("shortcutModal");
+      if (modal) {
+        modal.style.display = "flex";
+        modal.classList.add("show");
+      }
+    }
+
+    function closeShortcutModal() {
+      recordingShortcutId = null;
+      const modal = document.getElementById("shortcutModal");
+      if (modal) {
+        modal.classList.remove("show");
+        modal.style.display = "none";
+      }
+    }
+
+    function startRecordingShortcut(actionId) {
+      recordingShortcutId = actionId;
+      const def = SHORTCUT_DEFS.find(d => d.id === actionId);
+      showShortcutModalStatus(`Đang chờ bấm phím mới cho "${def ? def.label : actionId}"... (Nhấn Esc để hủy)`, "info");
+      renderShortcutModal();
+    }
+
+    function cancelRecordingShortcut() {
+      recordingShortcutId = null;
+      showShortcutModalStatus("Đã hủy thay đổi phím tắt.", "warn");
+      renderShortcutModal();
+    }
+
+    function applyRecordedShortcut(actionId, combo) {
+      recordingShortcutId = null;
+      const def = SHORTCUT_DEFS.find(d => d.id === actionId);
+      const res = setCustomShortcut(actionId, combo);
+      renderShortcutModal();
+      if (!res.ok) {
+        showShortcutModalStatus(res.error, "error");
+        return;
+      }
+      const keyFmt = formatShortcutKey(res.key);
+      if (res.swappedWith) {
+        const otherDef = SHORTCUT_DEFS.find(d => d.id === res.swappedWith);
+        const swapMsg = `Đã đổi "${def ? def.label : actionId}" → [${keyFmt}] và hoán đổi "${otherDef ? otherDef.label : res.swappedWith}" → [${formatShortcutKey(res.swappedTo)}].`;
+        showShortcutModalStatus(swapMsg, "warn");
+        showToast(swapMsg);
+      } else {
+        showShortcutModalStatus(`Đã cập nhật "${def ? def.label : actionId}" → [${keyFmt}].`, "info");
+      }
+    }
+
+    function initCustomShortcuts() {
+      loadCustomShortcuts();
+      syncShortcutHintsUI();
+    }
 
     // State
     let CLASSES = [
@@ -3520,6 +4367,7 @@
       splitter.addEventListener("keydown", (e) => {
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
           e.preventDefault();
+          e.stopPropagation();
           const cur = classesPanel.getBoundingClientRect().height;
           applySidebarTopHeight(cur + (e.key === "ArrowDown" ? 24 : -24), true);
         }
@@ -3879,28 +4727,28 @@
           }
           return;
         }
-        if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+        const matchedAction = (typeof matchShortcutAction === "function") ? matchShortcutAction(e) : null;
+        const isInputNavKey = (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Backspace" || e.key === "Delete");
+        if (matchedAction === "undo" || ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z"))) {
           e.preventDefault();
           e.stopPropagation();
           hideCanvasQuickIdPopover(true);
           undoAnnotation();
           return;
         }
-        const toolMap = {
-          e: "eraser",
-          p: "poly_manual",
-          f: "poly_freehand",
-          v: "select",
-          s: "smart_poly",
-          h: "pan"
-        };
-        const lower = e.key.toLowerCase();
-        if (!e.ctrlKey && !e.metaKey && !e.altKey && toolMap[lower]) {
+        if (matchedAction && !isInputNavKey && (
+          matchedAction.startsWith("tool_") ||
+          matchedAction === "prev_class" ||
+          matchedAction === "next_class" ||
+          matchedAction === "prev_annotation" ||
+          matchedAction === "next_annotation" ||
+          matchedAction === "open_shortcuts"
+        )) {
           e.preventDefault();
           e.stopPropagation();
           commitCanvasQuickId();
           hideCanvasQuickIdPopover(false);
-          setTool(toolMap[lower]);
+          executeShortcutAction(matchedAction, e);
           return;
         }
         if ((e.key === "?" || e.key === "F1") && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -4279,6 +5127,7 @@
 
     // Init
     window.addEventListener("DOMContentLoaded", async () => {
+      initCustomShortcuts();
       setupSidebarSplitter();
       setupCanvasQuickIdEvents();
       renderClassList();
@@ -4382,6 +5231,7 @@
         const count = annotations.filter(a => a.class_name === cls.name).length;
         const item = document.createElement("div");
         item.className = `class-item ${cls.name === currentClass ? 'active' : ''}`;
+        item.dataset.className = cls.name;
         item.onclick = () => selectClass(cls.name);
         item.innerHTML = `
           <div style="display:flex; align-items:center;">
@@ -4402,6 +5252,12 @@
         changeAnnotationClass(selectedAnnotationIndex, className);
       }
       renderClassList();
+      if (typeof document !== "undefined") {
+        const activeEl = document.querySelector("#classList .class-item.active");
+        if (activeEl && typeof activeEl.scrollIntoView === "function") {
+          activeEl.scrollIntoView({ block: "nearest" });
+        }
+      }
     }
 
     // API Models (SAM Polygon Segmentation)
@@ -5661,11 +6517,25 @@
       };
 
       window.addEventListener("keydown", (e) => {
+        if (isModalVisible("shortcutModal") && recordingShortcutId) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.key === "Escape") {
+            cancelRecordingShortcut();
+            return;
+          }
+          const combo = normalizeShortcutEvent(e);
+          if (!combo) return;
+          applyRecordedShortcut(recordingShortcutId, combo);
+          return;
+        }
+
         const activeTag = (document.activeElement && document.activeElement.tagName) || "";
         const isTyping = (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT");
 
         if (isTyping) {
           if (e.key === "Escape") {
+            closeShortcutModal();
             closeProjectModal();
             closeDeviceModal();
             closeExportModal();
@@ -5683,6 +6553,7 @@
         }
 
         if (e.key === "Escape") {
+          if (isModalVisible("shortcutModal")) { closeShortcutModal(); return; }
           if (isModalVisible("exportModal")) { closeExportModal(); return; }
           if (isModalVisible("releaseNotesModal")) { closeReleaseNotesModal(); return; }
           if (isModalVisible("guideModal")) { closeGuideModal(); return; }
@@ -5690,7 +6561,37 @@
           if (isModalVisible("projectModal")) { closeProjectModal(); return; }
         }
 
-        if (["exportModal", "releaseNotesModal", "guideModal", "deviceModal", "projectModal"].some(isModalVisible)) {
+        if (["shortcutModal", "exportModal", "releaseNotesModal", "guideModal", "deviceModal", "projectModal"].some(isModalVisible)) {
+          return;
+        }
+
+        if (activeTool === "poly_manual") {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (manualPolyPoints.length >= 3) {
+              finishManualPolygon();
+            } else {
+              showToast("Polygon cần tối thiểu 3 đỉnh để hoàn thành!");
+            }
+            return;
+          }
+          if ((e.key === "Backspace" || e.key === "Delete") && manualPolyPoints.length > 0) {
+            e.preventDefault();
+            manualPolyPoints.pop();
+            redraw();
+            showToast("Đã xóa đỉnh vừa đặt");
+            return;
+          }
+        }
+
+        if (e.key === "Escape") {
+          if (activeTool === "poly_manual" && manualPolyPoints.length > 0) {
+            cancelManualPolygon();
+          } else if (activeTool === "poly_freehand" && isDrawingFreehand) {
+            cancelFreehandPolygon(true);
+          } else {
+            deselectAnnotation();
+          }
           return;
         }
 
@@ -5703,58 +6604,11 @@
           return;
         }
 
-        // Ctrl + Z
-        if (e.ctrlKey && (e.key === "z" || e.key === "Z")) {
+        const matchedAction = matchShortcutAction(e);
+        if (matchedAction) {
           e.preventDefault();
-          undoAnnotation();
+          executeShortcutAction(matchedAction, e);
           return;
-        }
-
-        // Phím tắt chỉnh cỡ cục tẩy: [ và ]
-        if (e.key === "[" || e.key === "{") {
-          setEraserRadius(eraserRadius - 5);
-        } else if (e.key === "]" || e.key === "}") {
-          setEraserRadius(eraserRadius + 5);
-        } else if (e.key === "e" || e.key === "E") {
-          if (!e.ctrlKey) setTool("eraser");
-        } else if (e.key === "p" || e.key === "P") {
-          if (!e.ctrlKey) setTool("poly_manual");
-        } else if (e.key === "f" || e.key === "F") {
-          if (!e.ctrlKey) setTool("poly_freehand");
-        } else if (e.key === "v" || e.key === "V") {
-          if (!e.ctrlKey) setTool("select");
-        } else if (e.key === "s" || e.key === "S") {
-          if (!e.ctrlKey) setTool("smart_poly");
-        } else if (e.key === "h" || e.key === "H") {
-          if (!e.ctrlKey) setTool("pan");
-        }
-
-        if (activeTool === "poly_manual") {
-          if (e.key === "Enter") {
-            if (manualPolyPoints.length >= 3) {
-              finishManualPolygon();
-            } else {
-              showToast("Polygon cần tối thiểu 3 đỉnh để hoàn thành!");
-            }
-          } else if (e.key === "Escape") {
-            if (manualPolyPoints.length > 0) {
-              cancelManualPolygon();
-            } else {
-              deselectAnnotation();
-            }
-          } else if (e.key === "Backspace" || e.key === "Delete") {
-            if (manualPolyPoints.length > 0) {
-              manualPolyPoints.pop();
-              redraw();
-              showToast("Đã xóa đỉnh vừa đặt");
-            }
-          }
-        } else if (e.key === "Escape") {
-          if (activeTool === "poly_freehand" && isDrawingFreehand) {
-            cancelFreehandPolygon(true);
-          } else {
-            deselectAnnotation();
-          }
         }
       });
     }
