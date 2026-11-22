@@ -1,12 +1,12 @@
 # RoboLabel AI — Studio Gán Nhãn & Phân Đoạn Ảnh Tự Động Cho YOLO
 
-![Version](https://img.shields.io/badge/Version-v1.51-7c3aed?style=flat-square)
+![Version](https://img.shields.io/badge/Version-v1.52-7c3aed?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%20--%203.14-3776ab?style=flat-square&logo=python&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-SAM%202.1%20%2B%20CLIP%20ViT--B%2F32-0ea5e9?style=flat-square)
 ![Export](https://img.shields.io/badge/Export-YOLO--Seg%20(.txt)%20%26%20Labelme%20(.json)-10b981?style=flat-square)
 ![Compute](https://img.shields.io/badge/Compute-NVIDIA%20CUDA%20%2F%20CPU-76b900?style=flat-square)
 
-> **Phiên bản hiện tại:** `v1.51` — Bổ sung hộp thoại **Cài đặt & Tùy chỉnh Phím tắt (`K`)**, phím tắt chuyển nhanh giữa **Classes (`↑`/`↓`)**, **Nhãn (`, `/`.`)**, **Ảnh (`←`/`→`)** và **Thu nhỏ / Phóng to / Đặt lại (`-` / `=` / `R`)**.
+> **Phiên bản hiện tại:** `v1.52` — Bổ sung thông báo **nhãn thiếu `Group ID` bằng viền xanh dương** bên cột **Images** (thumbnail) và cột **Current Objects** (kèm huy hiệu `ID?` và nút **Gán ID ngay**), giữ nguyên màu viền class của segment trên ảnh Canvas.
 
 ---
 
@@ -28,6 +28,13 @@ Công cụ giúp rút ngắn tối đa thời gian vẽ thủ công khi cần g�
 | **Xuất `.txt` & `.json` tùy chọn** | Xuất **YOLO `.txt`** (tọa độ chuẩn hóa `[0, 1]`, tự lược bỏ `group_id`), **Labelme / X-AnyLabeling `.json`** (pixel tuyệt đối, giữ `group_id`), hoặc **cả hai**, chọn cấu trúc `train/val` hoặc thư mục phẳng, hỗ trợ preset `Chuẩn 5 lớp`. |
 | **Quản lý Project & Auto-Save** | Tạo nhiều Project độc lập (kéo thả thư mục hoặc chọn từ ổ đĩa), tự nhận diện dataset ảnh thuần / YOLO Box / YOLO Seg, đồng bộ Auto-Save liên tục. |
 | **Điều phối GPU CUDA / CPU** | Tự dò GPU NVIDIA (`cu126` / `cu124`), chuyển đổi linh hoạt GPU/CPU ngay trên Header, tự lùi về CPU khi tràn VRAM và tích hợp **Benchmark GPU**. |
+
+### Điểm mới nổi bật trong phiên bản `v1.52`
+
+- **Thông báo nhãn thiếu `Group ID` bằng viền xanh dương:**
+  - **Cột `Images` (phải):** Thumbnail ảnh có ít nhất 1 nhãn chưa gán `Group ID` hiển thị **viền xanh dương** kèm icon tag xanh dương cạnh tên ảnh.
+  - **Cột `Current Objects` (trái):** Từng dòng nhãn thiếu ID hiển thị **viền xanh dương**, nền xanh nhạt và huy hiệu **`ID?`**, kết hợp banner thông báo phía trên Canvas với nút **`Gán ID ngay`** (nhảy tới nhãn thiếu ID tiếp theo và mở sẵn ô nhập số).
+  - **Giữ sạch vùng ảnh Canvas:** Các segment trên ảnh chính giữ nguyên màu theo class (không tô viền xanh chồng lên nét segment).
 
 ### Điểm mới nổi bật trong phiên bản `v1.51`
 
@@ -159,7 +166,7 @@ Sau khi chạy `run_app.bat`, trình duyệt sẽ mở không gian làm việc c
    - **Chọn Project:** Hiển thị Workspace / Project hiện tại (ví dụ `Workspace Mặc định`); click để mở nhanh danh sách Project.
    - **Chọn mô hình SAM:** Chuyển giữa **`SAM 2.1 (Tiny)`** (nhanh, khuyên dùng hằng ngày) và **`SAM 2.1 (Large)`** (viền chi tiết hơn).
    - **Nút `GPU / CPU`:** Xem thiết bị đang chạy (`GPU: GTX 165...` hoặc `CPU`), chuyển đổi CUDA/CPU và mở **Benchmark GPU**.
-   - **Badge phiên bản (`v1.51`), nút `Phím tắt` (`K`) & `Hướng dẫn` (`?` / `F1`):** Xem điểm mới bản cập nhật (khi nhấn badge `v1.51`), mở hộp thoại tùy chỉnh phím tắt (`K`) hoặc bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
+   - **Badge phiên bản (`v1.52`), nút `Phím tắt` (`K`) & `Hướng dẫn` (`?` / `F1`):** Xem điểm mới bản cập nhật (khi nhấn badge `v1.52`), mở hộp thoại tùy chỉnh phím tắt (`K`) hoặc bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
    - **`Quản lý Project` / `Xuất nhãn` / `Tải ảnh`:** Tạo hoặc mở Dataset Project, xuất nhãn tùy chọn (`.txt` / `.json`), và thêm ảnh đơn lẻ.
 2. **Cột trái (Classes & Current Objects):**
    - Công tắc **`Tự nhận diện Class`** (bật để CLIP tự đoán nhãn khi cắt bằng AI; tắt để gán đúng Class đang chọn thủ công).

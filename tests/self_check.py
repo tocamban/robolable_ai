@@ -845,9 +845,9 @@ def check_clear_group_id_ui():
         "clearCurrentImageGroupIds",
         "clearProjectGroupIds",
         "/api/clear_project_group_ids",
-        'const APP_VERSION = "v1.51";',
+        'const APP_VERSION = "v1.52";',
     ):
-        assert marker in html, f"missing clear group-id / v1.51 marker: {marker}"
+        assert marker in html, f"missing clear group-id / v1.52 marker: {marker}"
 
     node_exe = shutil.which("node")
     if node_exe:
@@ -1089,9 +1089,9 @@ def check_missing_group_id_alert_and_blue_border(tmp):
         "focusNextMissingIdAnnotation",
         "getMissingIdAnnotations",
         "#2563eb",
-        "[Thiếu ID]",
     ):
         assert marker in html, f"missing missing-ID blue border marker: {marker}"
+    assert "[Thiếu ID]" not in html, "canvas segment labels must not draw [Thiếu ID]"
 
     node_exe = shutil.which("node")
     if node_exe:
@@ -1209,9 +1209,11 @@ assert(ctx.focusNextMissingIdAnnotation() === true && ctx.selectedAnnotationInde
 
 ctx.selectedAnnotationIndex = null;
 ctx.redraw();
-assert(strokeCalls.some(c => c.style === "#2563eb" && c.width > 3), "canvas redraw must draw blue outer stroke #2563eb for missing-ID annotations");
-assert(textCalls.some(t => t.includes("[Thiếu ID] calyx #2")), "canvas label must show [Thiếu ID] prefix");
-assert(textCalls.some(t => t.includes("[ID:0] ripe #1")), "group_id=0 must render [ID:0], not [Thiếu ID]");
+assert(!strokeCalls.some(c => c.style === "#2563eb"), "canvas segment must keep class color without blue #2563eb border");
+assert(strokeCalls.some(c => c.style === "#a855f7"), "calyx #2 must still stroke with its class color #a855f7");
+assert(!textCalls.some(t => t.includes("[Thiếu ID]")), "canvas label must not show [Thiếu ID] prefix");
+assert(textCalls.some(t => t === "calyx #2"), "missing-ID segment keeps clean class label on canvas");
+assert(textCalls.some(t => t.includes("[ID:0] ripe #1")), "group_id=0 still renders [ID:0]");
 """
         proc = subprocess.run([node_exe, "-e", js_check, html_path], capture_output=True, text=True)
         assert proc.returncode == 0, f"JS missing-ID check failed: {proc.stderr or proc.stdout}"
