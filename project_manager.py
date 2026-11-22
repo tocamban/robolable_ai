@@ -1353,6 +1353,62 @@ class ProjectManager:
         return {"success": True, "saved_at": now_iso(), "count": len(annotations_list)}
 
     @_locked
+    def clear_all_group_ids(self):
+        """Remove group_id from all annotations across every image in the active project, keeping annotations intact."""
+        ctx = self.get_active_context()
+        images_dir = ctx["images_dir"]
+        ann_dir = ctx["annotations_dir"]
+        images = sorted([f for f in os.listdir(images_dir) if is_image_file(f)]) if os.path.isdir(images_dir) else []
+
+        affected_images = 0
+        cleared_annotations = 0
+        for img_name in images:
+            ann_path = os.path.join(ann_dir, f"{img_name}.json")
+            if not os.path.isfile(ann_path):
+                continue
+            try:
+                with open(ann_path, "r", encoding="utf-8") as f:
+                    raw_data = json.load(f)
+            except Exception as e:
+                print(f"[!] Warning reading {ann_path} while clearing group IDs: {e}")
+                continue
+            if not isinstance(raw_data, dict) or not isinstance(raw_data.get("annotations"), list):
+                continue
+
+            updated_anns = []
+            file_changed = False
+            for item in raw_data["annotations"]:
+                if not isinstance(item, dict):
+                    continue
+                entry = dict(item)
+                if normalize_group_id(entry.get("group_id")) is not None:
+                    cleared_annotations += 1
+                if "group_id" in entry:
+                    entry.pop("group_id", None)
+                    file_changed = True
+                updated_anns.append(entry)
+
+            if file_changed:
+                payload = dict(raw_data)
+                payload["annotations"] = sanitize_annotations_list(updated_anns)
+                atomic_write_json(ann_path, payload)
+                affected_images += 1
+
+        if affected_images > 0 and not ctx["is_default"] and ctx["manifest"]:
+            manifest = ctx["manifest"]
+            manifest["updated_at"] = now_iso()
+            self._write_manifest(ctx["project_dir"], manifest)
+            self._upsert_registry_entry(manifest)
+
+        return {
+            "project_id": ctx["id"],
+            "project_name": ctx["name"],
+            "total_images": len(images),
+            "affected_images": affected_images,
+            "cleared_annotations": cleared_annotations,
+        }
+
+    @_locked
     def record_last_image(self, filename):
         ctx = self.get_active_context()
         safe_name = os.path.basename(filename)

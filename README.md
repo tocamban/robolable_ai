@@ -1,12 +1,12 @@
 # RoboLabel AI — Studio Gán Nhãn & Phân Đoạn Ảnh Tự Động Cho YOLO
 
-![Version](https://img.shields.io/badge/Version-v1.42-7c3aed?style=flat-square)
+![Version](https://img.shields.io/badge/Version-v1.5-7c3aed?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%20--%203.14-3776ab?style=flat-square&logo=python&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-SAM%202.1%20%2B%20CLIP%20ViT--B%2F32-0ea5e9?style=flat-square)
 ![Export](https://img.shields.io/badge/Export-YOLO--Seg%20(.txt)%20%26%20Labelme%20(.json)-10b981?style=flat-square)
 ![Compute](https://img.shields.io/badge/Compute-NVIDIA%20CUDA%20%2F%20CPU-76b900?style=flat-square)
 
-> **Phiên bản hiện tại:** `v1.42` — Bổ sung thanh kéo căn chỉnh tỷ lệ giữa bảng **Classes** và **Current Objects** (lưu vị trí), tự động cuộn tới đúng nhãn trong **Current Objects** khi chọn vùng trên ảnh, và thanh Header tự xuống 2 hàng gọn gàng trên cửa sổ hẹp.
+> **Phiên bản hiện tại:** `v1.5` — Bổ sung 2 nút xóa toàn bộ `Group ID` (**Xóa ID ảnh này** hỗ trợ `Ctrl + Z` và **Xóa ID toàn Project** giữ nguyên toàn bộ vùng nhãn), cùng Popover nhập nhanh `Group ID` trực tiếp trên Canvas bằng phím số `0–9`.
 
 ---
 
@@ -28,6 +28,13 @@ Công cụ giúp rút ngắn tối đa thời gian vẽ thủ công khi cần g�
 | **Xuất `.txt` & `.json` tùy chọn** | Xuất **YOLO `.txt`** (tọa độ chuẩn hóa `[0, 1]`, tự lược bỏ `group_id`), **Labelme / X-AnyLabeling `.json`** (pixel tuyệt đối, giữ `group_id`), hoặc **cả hai**, chọn cấu trúc `train/val` hoặc thư mục phẳng, hỗ trợ preset `Chuẩn 5 lớp`. |
 | **Quản lý Project & Auto-Save** | Tạo nhiều Project độc lập (kéo thả thư mục hoặc chọn từ ổ đĩa), tự nhận diện dataset ảnh thuần / YOLO Box / YOLO Seg, đồng bộ Auto-Save liên tục. |
 | **Điều phối GPU CUDA / CPU** | Tự dò GPU NVIDIA (`cu126` / `cu124`), chuyển đổi linh hoạt GPU/CPU ngay trên Header, tự lùi về CPU khi tràn VRAM và tích hợp **Benchmark GPU**. |
+
+### Điểm mới nổi bật trong phiên bản `v1.5`
+
+- **2 nút xóa toàn bộ `Group ID` ở Sidebar trái (vẫn giữ nguyên nhãn):**
+  - **`Xóa ID ảnh này`:** Gỡ toàn bộ `group_id` của ảnh đang mở (giữ nguyên toàn bộ polygon/bbox và class, hỗ trợ `Ctrl + Z` hoàn tác nếu bấm nhầm).
+  - **`Xóa ID toàn Project`:** Dọn sạch `group_id` trên tất cả ảnh thuộc project đang hoạt động qua API `/api/clear_project_group_ids`, giữ nguyên 100% nhãn đối tượng và đồng bộ Auto-Save.
+- **Popover nhập nhanh `Group ID` trực tiếp trên Canvas:** Khi chọn một vùng nhãn trên ảnh, ô nhập nhanh `Group ID` hiện ngay cạnh vị trí chuột (hoặc nhấn thẳng phím số `0–9` rồi `Enter` để gán tức thì; `Esc` để hủy).
 
 ### Điểm mới nổi bật trong phiên bản `v1.42`
 
@@ -144,7 +151,7 @@ Sau khi chạy `run_app.bat`, trình duyệt sẽ mở không gian làm việc c
    - **Chọn Project:** Hiển thị Workspace / Project hiện tại (ví dụ `Workspace Mặc định`); click để mở nhanh danh sách Project.
    - **Chọn mô hình SAM:** Chuyển giữa **`SAM 2.1 (Tiny)`** (nhanh, khuyên dùng hằng ngày) và **`SAM 2.1 (Large)`** (viền chi tiết hơn).
    - **Nút `GPU / CPU`:** Xem thiết bị đang chạy (`GPU: GTX 165...` hoặc `CPU`), chuyển đổi CUDA/CPU và mở **Benchmark GPU**.
-   - **Badge phiên bản (`v1.42`) & nút `Hướng dẫn` (`?` / `F1`):** Mở thông báo điểm mới bản cập nhật (khi nhấn badge `v1.42`) hoặc bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
+   - **Badge phiên bản (`v1.5`) & nút `Hướng dẫn` (`?` / `F1`):** Mở thông báo điểm mới bản cập nhật (khi nhấn badge `v1.5`) hoặc bảng hướng dẫn minh họa 5 tab ngay trong ứng dụng.
    - **`Quản lý Project` / `Xuất nhãn` / `Tải ảnh`:** Tạo hoặc mở Dataset Project, xuất nhãn tùy chọn (`.txt` / `.json`), và thêm ảnh đơn lẻ.
 2. **Cột trái (Classes & Current Objects):**
    - Công tắc **`Tự nhận diện Class`** (bật để CLIP tự đoán nhãn khi cắt bằng AI; tắt để gán đúng Class đang chọn thủ công).
@@ -238,8 +245,9 @@ Khi một cụm đối tượng gồm nhiều bộ phận tách rời thuộc ch
 1. **Đánh ID trước khi vẽ *(nhanh nhất)*:**
    - Tại thanh **`Group ID mới`** ở cột trái, gõ số `1` (hoặc bấm `+1`) rồi lần lượt vẽ **thịt quả**, **đài hoa** và **cuống** của quả thứ nhất. Mọi vùng mới tạo (bằng SAM AI, Polygon thủ công hay BBox) đều tự gắn `[ID:1]`.
    - Khi chuyển sang quả bên cạnh, bấm nút **`+1`** để tăng `Group ID mới` lên `2` và vẽ tiếp cụm thứ hai (`[ID:2]`). Bấm **`×`** để quay lại trạng thái `Trống` (không gắn ID tự động).
-2. **Sửa ID & kiểm tra viền đồng bộ:**
-   - Gõ trực tiếp số vào ô **`ID`** trên từng dòng của **`Current Objects`**, hoặc chọn đối tượng rồi sửa trong **`Group ID vùng chọn`** (`×` để xóa ID).
+2. **Sửa / Xóa ID & kiểm tra viền đồng bộ:**
+   - Click chọn một vùng trên ảnh để mở ô nhập nhanh `ID` ngay cạnh con trỏ (hoặc nhấn thẳng phím số `0–9` rồi `Enter`), gõ số vào ô **`ID`** trên từng dòng của **`Current Objects`**, hoặc sửa trong **`Group ID vùng chọn`** (`×` để xóa ID).
+   - Dùng **`Xóa ID ảnh này`** (hỗ trợ `Ctrl + Z`) hoặc **`Xóa ID toàn Project`** ở phía dưới danh sách **Current Objects** để dọn sạch toàn bộ `group_id` khi muốn đánh lại cụm từ đầu mà không làm mất vùng nhãn đã vẽ.
    - Khi click chọn một vùng (như **`#1 (unripe)`** màu tím ở ảnh minh họa trên), các bộ phận khác cùng `ID: 1` (như **`[ID:1] calyx #3`** và **`[ID:1] stem #5`**) tự động hiện **viền đứt nét cùng màu** trên Canvas để bạn rà soát tức thì việc ghép cụm có bị nhầm sang quả `ID: 2` hay không.
 3. **Trường hợp đặc biệt — Cuống bị lá che đứt làm 2 đoạn:**
    - **Tuyệt đối không vẽ nối xuyên qua chiếc lá.**

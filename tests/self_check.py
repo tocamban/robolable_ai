@@ -253,6 +253,35 @@ def check_project_manager(tmp):
     assert del_proj_again["success"] is True and del_proj_again["remaining_images"] == 0
     assert not os.path.exists(os.path.join(pdir, "images", "sample.jpg"))
 
+    # Restore sample.jpg, add sample2.jpg and sample3.jpg (no JSON), and test clear_all_group_ids()
+    mgr.restore_deleted_image()
+    img2_path = os.path.join(pdir, "images", "sample2.jpg")
+    Image.new("RGB", (100, 80), color=(20, 140, 20)).save(img2_path)
+    mgr.sync_image_annotations("sample2.jpg", [
+        {"class_name": "ripe", "group_id": 4, "type": "polygon", "polygon": [[5, 5], [40, 5], [40, 40]]},
+        {"class_name": "calyx", "type": "polygon", "polygon": [[10, 1], [30, 1], [30, 5]]},
+    ])
+    img3_path = os.path.join(pdir, "images", "sample3.jpg")
+    Image.new("RGB", (80, 60), color=(90, 90, 90)).save(img3_path)
+
+    cleared_res = mgr.clear_all_group_ids()
+    assert cleared_res["total_images"] == 3
+    assert cleared_res["affected_images"] == 2
+    assert cleared_res["cleared_annotations"] == 6  # 5 from sample.jpg (including group_id=0) + 1 from sample2.jpg
+
+    with open(os.path.join(pdir, "annotations", "sample.jpg.json"), "r", encoding="utf-8") as f:
+        s1_after = json.load(f)["annotations"]
+    assert len(s1_after) == 6
+    assert all("group_id" not in a for a in s1_after)
+    assert s1_after[0]["class_name"] == "ripe" and s1_after[4]["type"] == "bbox"
+
+    with open(os.path.join(pdir, "annotations", "sample2.jpg.json"), "r", encoding="utf-8") as f:
+        s2_after = json.load(f)["annotations"]
+    assert len(s2_after) == 2 and all("group_id" not in a for a in s2_after)
+
+    cleared_again = mgr.clear_all_group_ids()
+    assert cleared_again["affected_images"] == 0 and cleared_again["cleared_annotations"] == 0
+
 
 def _img_bytes():
     buf = io.BytesIO()
@@ -356,6 +385,18 @@ def check_flask_routes(tmp):
 
         assert client.post("/api/export_image", json={"image_name": "../bad.jpg", "format": "json"}).status_code == 400
         assert client.post("/api/export_image", json={"image_name": "missing.jpg", "format": "json"}).status_code == 404
+
+        # Clear all group IDs across active project (annotations must remain intact)
+        clr_resp = client.post("/api/clear_project_group_ids", json={})
+        clr_json = clr_resp.get_json()
+        assert clr_resp.status_code == 200 and clr_json["success"] is True
+        assert clr_json["affected_images"] == 1 and clr_json["cleared_annotations"] == 2
+        after_clr = client.get("/api/annotations/up_test.jpg").get_json()["annotations"]
+        assert len(after_clr) == 2
+        assert [a["class_name"] for a in after_clr] == ["ripe", "stem"]
+        assert all("group_id" not in a for a in after_clr)
+        clr_again = client.post("/api/clear_project_group_ids", json={}).get_json()
+        assert clr_again["affected_images"] == 0 and clr_again["cleared_annotations"] == 0
 
         # Delete unqualified image (+ .json and .txt cleanup)
         assert client.post("/api/delete_image", json={"image_name": "../bad.jpg"}).status_code == 400
@@ -794,6 +835,37 @@ assert(pTiny.left === 10 && pTiny.top >= 10 && pTiny.top <= 28, "tiny container 
         assert proc.returncode == 0, f"JS canvas quick-id check failed: {proc.stderr or proc.stdout}"
 
 
+def check_clear_group_id_ui():
+    html_path = os.path.join(ROOT_DIR, "static", "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    for marker in (
+        "btnClearImageGroupIds",
+        "btnClearProjectGroupIds",
+        "clearCurrentImageGroupIds",
+        "clearProjectGroupIds",
+        "/api/clear_project_group_ids",
+        'const APP_VERSION = "v1.5";',
+    ):
+        assert marker in html, f"missing clear group-id / v1.5 marker: {marker}"
+
+    node_exe = shutil.which("node")
+    if node_exe:
+        js_check = r"""
+const fs = require("fs");
+const vm = require("vm");
+const html = fs.readFileSync(process.argv[1], "utf8");
+const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+const scriptSrc = scripts.sort((a, b) => b.length - a.length)[0];
+new vm.Script(scriptSrc);
+const setupSrc = scriptSrc.match(/function setupCanvasQuickIdEvents[\s\S]*?\n    \}/)[0];
+const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+assert(setupSrc.includes('e.key === "Escape"') && setupSrc.includes("e.stopPropagation()"), "Escape in quick ID popover must stopPropagation");
+"""
+        proc = subprocess.run([node_exe, "-e", js_check, html_path], capture_output=True, text=True)
+        assert proc.returncode == 0, f"JS clear group-id check failed: {proc.stderr or proc.stdout}"
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         check_device_manager(tmp)
@@ -803,6 +875,7 @@ def main():
         check_freehand_polygon_ui()
         check_sidebar_split_and_scroll_ui()
         check_canvas_quick_id_ui()
+        check_clear_group_id_ui()
     print("[PASS] All RoboLabel AI self-checks passed.")
 
 

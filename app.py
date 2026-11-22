@@ -1131,6 +1131,12 @@ def _api_action(fn):
     return wrapper
 
 
+@app.route("/api/clear_project_group_ids", methods=["POST"])
+@_api_action
+def api_clear_project_group_ids():
+    return pm.clear_all_group_ids()
+
+
 @app.route("/api/export", methods=["GET", "POST"])
 @_api_action
 def export_yolo():

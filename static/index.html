@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RoboLabel AI v1.42 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
+  <title>RoboLabel AI v1.5 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
@@ -268,6 +268,52 @@
       font-size: 11px;
       cursor: pointer;
       margin-top: 8px;
+    }
+
+    .bulk-id-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .btn-clear-id-img,
+    .btn-clear-id-proj {
+      border-radius: 6px;
+      padding: 6px 5px;
+      font-weight: 600;
+      font-size: 10.5px;
+      line-height: 1.25;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    }
+    .btn-clear-id-img {
+      flex: 0.92 1 auto;
+      background: #fffbeb;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+    .btn-clear-id-img:hover:not(:disabled) {
+      background: #fef3c7;
+      border-color: #fcd34d;
+    }
+    .btn-clear-id-proj {
+      flex: 1.08 1 auto;
+      background: #ffedd5;
+      color: #c2410c;
+      border: 1px solid #fdba74;
+    }
+    .btn-clear-id-proj:hover:not(:disabled) {
+      background: #fed7aa;
+      border-color: #fb923c;
+    }
+    .btn-clear-id-img:disabled,
+    .btn-clear-id-proj:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
     }
 
     /* Center Canvas Area */
@@ -1741,7 +1787,7 @@
       </div>
     </div>
     <div class="top-right">
-      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.42 • Nhấn để xem điểm mới bản cập nhật">v1.42</span>
+      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.5 • Nhấn để xem điểm mới bản cập nhật">v1.5</span>
       <button type="button" class="btn-guide-header" id="btnOpenGuide" onclick="openGuideModal('overview')" title="Xem hướng dẫn sử dụng giao diện & công cụ (Phím ? hoặc F1)">
         <i class="fa-solid fa-book-open"></i> Hướng dẫn
       </button>
@@ -1842,7 +1888,15 @@
         <div id="annotationList" style="display:flex; flex-direction:column; gap:4px; flex:1 1 0; min-height:48px; overflow-y:auto; padding-right:2px;">
           <!-- Active image annotations -->
         </div>
-        <button class="btn-export" onclick="clearCurrentAnnotations()" style="background:#fee2e2; color:#ef4444; border:1px solid #fecaca; margin-top:10px;">
+        <div class="bulk-id-actions">
+          <button type="button" id="btnClearImageGroupIds" class="btn-clear-id-img" onclick="clearCurrentImageGroupIds()" title="Xóa toàn bộ Group ID trên ảnh hiện tại (giữ nguyên các vùng nhãn, có thể Ctrl+Z)">
+            <i class="fa-solid fa-link-slash"></i> Xóa ID ảnh này
+          </button>
+          <button type="button" id="btnClearProjectGroupIds" class="btn-clear-id-proj" onclick="clearProjectGroupIds()" title="Xóa toàn bộ Group ID trên tất cả các ảnh trong project (giữ nguyên các vùng nhãn)">
+            <i class="fa-solid fa-eraser"></i> Xóa ID toàn Project
+          </button>
+        </div>
+        <button class="btn-export" onclick="clearCurrentAnnotations()" style="background:#fee2e2; color:#ef4444; border:1px solid #fecaca; margin-top:6px;">
           <i class="fa-solid fa-trash-can"></i> Xóa tất cả nhãn ảnh này
         </button>
       </div>
@@ -2343,7 +2397,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-book-open"></i>
           <span>Hướng dẫn sử dụng giao diện RoboLabel AI</span>
-          <span class="app-version-pill">v1.42</span>
+          <span class="app-version-pill">v1.5</span>
         </div>
         <button class="modal-close" onclick="closeGuideModal()" aria-label="Đóng hướng dẫn">&times;</button>
       </div>
@@ -2402,7 +2456,7 @@
               <rect x="328" y="13" width="82" height="24" rx="12" fill="#dcfce7"/>
               <text x="369" y="29" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">Đã lưu tự động</text>
               <rect x="480" y="15" width="38" height="20" rx="10" fill="#dcfce7" stroke="#86efac"/>
-              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.42</text>
+              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.5</text>
               <rect x="524" y="13" width="66" height="24" rx="12" fill="#eef2ff" stroke="#c7d2fe"/>
               <text x="557" y="29" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338ca">Hướng dẫn</text>
               <rect x="596" y="13" width="92" height="24" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
@@ -3101,9 +3155,10 @@
                 <div class="guide-card-title">
                   <span><i class="fa-solid fa-pen-to-square" style="color:#7c3aed;"></i> Sửa ID từng vùng &amp; Kiểm tra cụm</span>
                 </div>
-                <div class="guide-card-desc">Bổ sung hoặc chỉnh lại Group ID bất kỳ lúc nào mà không cần vẽ lại nhãn.</div>
+                <div class="guide-card-desc">Bổ sung, sửa hoặc xóa Group ID bất kỳ lúc nào mà không làm mất vùng nhãn.</div>
                 <ul class="guide-steps-list">
-                  <li>Nhập số vào ô <code>ID</code> trên từng dòng trong <b>Current Objects</b> hoặc ô <b>Group ID vùng chọn</b> (xóa trống / bấm <b>×</b> để bỏ ID).</li>
+                  <li>Click chọn vùng trên ảnh để hiện ô nhập nhanh ID ngay cạnh con trỏ (hoặc gõ thẳng phím số <code>0–9</code> từ bàn phím), hay sửa ở ô <code>ID</code> trong <b>Current Objects</b>.</li>
+                  <li>Dùng <b>Xóa ID ảnh này</b> (có thể <code>Ctrl+Z</code>) hoặc <b>Xóa ID toàn Project</b> để dọn toàn bộ Group ID mà vẫn giữ nguyên các vùng nhãn.</li>
                   <li>Khi click chọn 1 vùng có ID, mọi vùng khác chung ID tự động hiện <b>viền đứt nét cùng màu</b> trên ảnh để kiểm tra sót/nhầm cụm.</li>
                 </ul>
               </div>
@@ -3230,7 +3285,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-rocket" style="color:var(--primary);"></i>
           <span>Điểm mới trên bản cập nhật RoboLabel AI</span>
-          <span class="app-version-pill">v1.42</span>
+          <span class="app-version-pill">v1.5</span>
         </div>
         <button class="modal-close" onclick="closeReleaseNotesModal()" aria-label="Đóng thông báo cập nhật">&times;</button>
       </div>
@@ -3239,44 +3294,44 @@
         <div class="guide-intro-banner" style="padding:10px 12px;">
           <i class="fa-solid fa-circle-info" style="font-size:17px; color:#6d28d9; flex-shrink:0;"></i>
           <div>
-            Chào mừng bạn đến với <b>RoboLabel AI v1.42</b>! Bản cập nhật này hỗ trợ kéo căn chỉnh tỷ lệ giữa bảng <b>Classes</b> và <b>Current Objects</b>, tự động cuộn tới đúng nhãn đang chọn trên ảnh, và tối ưu thanh Header cho cửa sổ hẹp.
+            Chào mừng bạn đến với <b>RoboLabel AI v1.5</b>! Bản cập nhật này bổ sung 2 nút <b>Xóa ID ảnh này</b> / <b>Xóa ID toàn Project</b>, gán nhanh Group ID ngay trên Canvas bằng phím số, cùng các cải tiến giao diện từ v1.42.
           </div>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:9px; font-size:12px; color:#334155; line-height:1.5;">
-          <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:9px; padding:10px 12px;">
-            <div style="font-weight:700; color:#6d28d9; margin-bottom:3px;">
-              <i class="fa-solid fa-up-down"></i> 1. Kéo căn chỉnh bảng Classes / Current Objects &amp; Tự cuộn đến nhãn đang chọn
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#b45309; margin-bottom:3px;">
+              <i class="fa-solid fa-link-slash"></i> 1. Xóa toàn bộ Group ID theo ảnh hoặc toàn Project
             </div>
             <div>
-              Kéo thanh ngang giữa <i>Classes</i> và <i>Current Objects</i> (hoặc nhấn <span class="kbd-tag">&uarr;</span>/<span class="kbd-tag">&darr;</span>, double-click để đặt lại; tự lưu vị trí). Khi bấm chọn một vùng trên ảnh, danh sách <i>Current Objects</i> tự cuộn mượt đến đúng dòng nhãn tương ứng và nháy sáng nổi bật.
+              Cột trái <i>Current Objects</i> có thêm 2 nút riêng biệt: <b>Xóa ID ảnh này</b> (hỗ trợ <span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span> hoàn tác) và <b>Xóa ID toàn Project</b> (dọn sạch mọi <code>group_id</code> trong toàn bộ project mà vẫn giữ nguyên toàn bộ vùng nhãn polygon/box).
+            </div>
+          </div>
+
+          <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#6d28d9; margin-bottom:3px;">
+              <i class="fa-solid fa-bolt"></i> 2. Popover nhập nhanh Group ID ngay trên Canvas
+            </div>
+            <div>
+              Chọn một vùng nhãn trên ảnh để mở ô nhập ID cạnh con trỏ, hoặc nhấn thẳng phím số (<span class="kbd-tag">0</span>–<span class="kbd-tag">9</span>) rồi bấm <span class="kbd-tag">Enter</span> để gán ID tức thì; bấm <span class="kbd-tag">Esc</span> để hủy chỉnh sửa.
             </div>
           </div>
 
           <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#15803d; margin-bottom:3px;">
-              <i class="fa-solid fa-window-maximize"></i> 2. Thanh Header tự thích ứng cửa sổ hẹp (&le; 1080px)
+              <i class="fa-solid fa-up-down"></i> 3. Kéo căn chỉnh bảng Classes / Objects &amp; Header thích ứng
             </div>
             <div>
-              Ở các cửa sổ kích thước nhỏ, thanh Header tự xuống 2 hàng gọn gàng để giữ hiển thị đầy đủ badge <i>Đã lưu tự động</i>, ô chọn mô hình SAM và nút <i>GPU / CPU</i> mà không bị cắt xén.
+              Kéo thanh ngang giữa <i>Classes</i> và <i>Current Objects</i> (lưu vị trí), tự cuộn mượt đến đúng nhãn khi chọn trên ảnh, và thanh Header tự xuống 2 hàng gọn gàng ở cửa sổ hẹp (&le; 1080px).
             </div>
           </div>
 
           <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#4338ca; margin-bottom:3px;">
-              <i class="fa-solid fa-pencil"></i> 3. Vẽ Đường Bao Tự Do theo chuyển động chuột (Phím F)
+              <i class="fa-solid fa-layer-group"></i> 4. Vẽ tự do (F), Xóa ảnh nhanh (Ctrl + Z) &amp; Tự sửa trùng Shapely
             </div>
             <div>
-              Chọn biểu tượng cây bút (<span class="kbd-tag">F</span>), giữ chuột trái di theo viền vật thể; khi nhả chuột, hệ thống tự nối khép kín thành Polygon, lọc đỉnh nhiễu và tự động lưu ngay.
-            </div>
-          </div>
-
-          <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:9px; padding:10px 12px;">
-            <div style="font-weight:700; color:#b91c1c; margin-bottom:3px;">
-              <i class="fa-solid fa-layer-group"></i> 4. Xóa nhanh ảnh lỗi (Ctrl + Z), Phông chữ theo Zoom &amp; Tự sửa trùng Shapely
-            </div>
-            <div>
-              Bấm <b>&times;</b> trên thumbnail để xóa nhanh ảnh lỗi và khôi phục nguyên vẹn bằng <span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span>; nhãn trên canvas tự co giãn theo mức Zoom; tự cảnh báo &amp; cắt vùng giao nhau <code>&gt; 2 px²</code> bằng nút <b>Tự sửa</b>.
+              Vẽ đường bao tự do theo chuột (<span class="kbd-tag">F</span>), bấm <b>&times;</b> trên thumbnail để xóa ảnh lỗi (<span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span> khôi phục), tự cảnh báo &amp; cắt vùng giao nhau <code>&gt; 2 px²</code> bằng nút <b>Tự sửa</b>.
             </div>
           </div>
         </div>
@@ -3300,7 +3355,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v1.42";
+    const APP_VERSION = "v1.5";
     const SEEN_VERSION_KEY = "robolabel_seen_version";
     const SIDEBAR_SPLIT_KEY = "robolabel_sidebar_top_height";
     let preferredSidebarTopPx = null;
@@ -3807,12 +3862,14 @@
       inp.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
+          e.stopPropagation();
           commitCanvasQuickId();
           hideCanvasQuickIdPopover(false);
           return;
         }
         if (e.key === "Escape") {
           e.preventDefault();
+          e.stopPropagation();
           const targetIdx = quickIdTargetIndex;
           const origGid = (targetIdx !== null && hasGroupId(annotations[targetIdx])) ? annotations[targetIdx].group_id : null;
           const hadEdit = normalizeGroupIdClient(inp.value) !== origGid;
@@ -3824,6 +3881,7 @@
         }
         if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
           e.preventDefault();
+          e.stopPropagation();
           hideCanvasQuickIdPopover(true);
           undoAnnotation();
           return;
@@ -3839,6 +3897,7 @@
         const lower = e.key.toLowerCase();
         if (!e.ctrlKey && !e.metaKey && !e.altKey && toolMap[lower]) {
           e.preventDefault();
+          e.stopPropagation();
           commitCanvasQuickId();
           hideCanvasQuickIdPopover(false);
           setTool(toolMap[lower]);
@@ -3846,6 +3905,7 @@
         }
         if ((e.key === "?" || e.key === "F1") && !e.ctrlKey && !e.metaKey && !e.altKey) {
           e.preventDefault();
+          e.stopPropagation();
           commitCanvasQuickId();
           hideCanvasQuickIdPopover(false);
           openGuideModal("overview");
@@ -4989,6 +5049,87 @@
       updateAnnotationUI();
       saveAnnotations();
       redraw();
+    }
+
+    let isClearingProjectGroupIds = false;
+
+    function clearCurrentImageGroupIds() {
+      if (!currentImageName || !annotations.length) {
+        showToast("Ảnh này chưa có nhãn nào");
+        return;
+      }
+      const groupedCount = annotations.filter(hasGroupId).length;
+      if (groupedCount === 0) {
+        showToast("Ảnh này không có Group ID nào để xóa");
+        return;
+      }
+      if (!confirm(`Xóa toàn bộ Group ID của ${groupedCount} nhãn trong ảnh này?\n(Các vùng nhãn vẫn được giữ nguyên, có thể nhấn Ctrl+Z để hoàn tác)`)) return;
+      hideCanvasQuickIdPopover(true);
+      pushHistory();
+      annotations.forEach(ann => {
+        delete ann.group_id;
+      });
+      setActiveGroupId(null);
+      updateAnnotationUI();
+      saveAnnotations();
+      redraw();
+      showToast(`Đã xóa Group ID của ${groupedCount} nhãn trong ảnh này (Ctrl+Z để hoàn tác)`);
+    }
+
+    async function clearProjectGroupIds() {
+      if (isClearingProjectGroupIds) return;
+      const projLabel = activeProjectName || "hiện tại";
+      if (!confirm(
+        `Bạn có chắc chắn muốn xóa toàn bộ Group ID của TẤT CẢ các ảnh trong project "${projLabel}"?\n\n` +
+        `• Các vùng nhãn (polygon/box) và tên class vẫn được giữ nguyên.\n` +
+        `• Thao tác trên toàn project không thể hoàn tác bằng Ctrl+Z.`
+      )) return;
+
+      isClearingProjectGroupIds = true;
+      const btn = document.getElementById("btnClearProjectGroupIds");
+      if (btn) btn.disabled = true;
+
+      const reqProject = activeProjectId;
+      const reqImage = currentImageName;
+      hideCanvasQuickIdPopover(true);
+      try {
+        await flushPendingSave();
+        if (activeProjectId !== reqProject) return;
+        const { res, data } = await postJson("/api/clear_project_group_ids", {});
+        if (!res.ok || data.success === false) {
+          showToast(data.error || "Lỗi khi xóa Group ID toàn project");
+          return;
+        }
+        if (activeProjectId !== reqProject) return;
+
+        setActiveGroupId(null);
+        if (currentImageName === reqImage) {
+          annotations.forEach(ann => {
+            delete ann.group_id;
+          });
+          historyStack = [];
+          updateAnnotationUI();
+          redraw();
+        }
+        if (data.affected_images > 0) {
+          const now = new Date();
+          const hh = String(now.getHours()).padStart(2, "0");
+          const mm = String(now.getMinutes()).padStart(2, "0");
+          const ss = String(now.getSeconds()).padStart(2, "0");
+          setAutoSaveStatus("saved", `${hh}:${mm}:${ss}`);
+        }
+        if (data.cleared_annotations > 0) {
+          showToast(`Đã xóa ${data.cleared_annotations} Group ID trên ${data.affected_images}/${data.total_images} ảnh trong project!`);
+        } else {
+          showToast("Không có Group ID nào trong project để xóa.");
+        }
+      } catch (e) {
+        console.error("Clear project group IDs error:", e);
+        showToast("Lỗi kết nối khi xóa Group ID toàn project");
+      } finally {
+        isClearingProjectGroupIds = false;
+        if (btn) btn.disabled = false;
+      }
     }
 
     function clearCurrentAnnotations() {
