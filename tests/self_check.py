@@ -845,9 +845,9 @@ def check_clear_group_id_ui():
         "clearCurrentImageGroupIds",
         "clearProjectGroupIds",
         "/api/clear_project_group_ids",
-        'const APP_VERSION = "v1.5";',
+        'const APP_VERSION = "v1.51";',
     ):
-        assert marker in html, f"missing clear group-id / v1.5 marker: {marker}"
+        assert marker in html, f"missing clear group-id / v1.51 marker: {marker}"
 
     node_exe = shutil.which("node")
     if node_exe:
@@ -877,6 +877,9 @@ def check_custom_shortcuts_and_navigation_ui():
         "btnNextClassNav",
         "btnPrevAnnNav",
         "btnNextAnnNav",
+        "btnZoomOut",
+        "btnZoomIn",
+        "btnZoomReset",
         "guideShortcutTableBody",
         "SHORTCUT_DEFS",
         "normalizeShortcutEvent",
@@ -921,6 +924,9 @@ const ctx = {
   currentImageName: "a.jpg",
   selectedHistory: [],
   toastMessages: [],
+  zoomActions: [],
+  adjustZoom: (d) => { ctx.zoomActions.push(d); },
+  resetZoom: () => { ctx.zoomActions.push("reset"); },
   showToast: (m) => { ctx.toastMessages.push(m); },
   hasGroupId: (ann) => Boolean(ann && ann.group_id !== undefined && ann.group_id !== null && ann.group_id !== ""),
   selectAnnotation: (idx) => {
@@ -953,6 +959,9 @@ const runTests = `
   assert(normalizeShortcutEvent({ key: "ArrowUp" }) === "ArrowUp", "ArrowUp preserved");
   assert(normalizeShortcutEvent({ key: "ư", code: "BracketLeft" }) === "[", "Vietnamese IME [ -> [");
   assert(normalizeShortcutEvent({ key: "ư", code: "KeyW" }) === "W", "Vietnamese IME w -> W");
+  assert(normalizeShortcutEvent({ key: "+", shiftKey: true, code: "Equal" }) === "=", "Shift+= / + -> =");
+  assert(normalizeShortcutEvent({ key: "+", code: "NumpadAdd" }) === "=", "NumpadAdd -> =");
+  assert(normalizeShortcutEvent({ key: "-" }) === "-", "- -> -");
   assert(normalizeShortcutEvent({ key: "Control" }) === "", "bare modifier ignored");
 
   // 3. setCustomShortcut, auto-swap on conflict, and reserved rejection
@@ -961,17 +970,17 @@ const runTests = `
   assert(setCustomShortcut("tool_smart_poly", "Enter").ok === false, "Enter must be rejected");
   assert(setCustomShortcut("tool_smart_poly", "Escape").ok === false, "Escape must be rejected");
 
-  const r1 = setCustomShortcut("tool_smart_poly", "Q");
-  assert(r1.ok === true && r1.swappedWith === null, "bind Q to smart_poly");
-  assert(matchShortcutAction({ key: "q" }) === "tool_smart_poly", "match custom Q");
+  const r1 = setCustomShortcut("tool_smart_poly", "U");
+  assert(r1.ok === true && r1.swappedWith === null, "bind U to smart_poly");
+  assert(matchShortcutAction({ key: "u" }) === "tool_smart_poly", "match custom U");
 
   const r2 = setCustomShortcut("tool_smart_poly", "P");
-  assert(r2.ok === true && r2.swappedWith === "tool_poly_manual" && r2.swappedTo === "Q", "conflict swaps P and Q");
-  assert(getShortcutFor("tool_smart_poly") === "P" && getShortcutFor("tool_poly_manual") === "Q", "swapped values persisted");
+  assert(r2.ok === true && r2.swappedWith === "tool_poly_manual" && r2.swappedTo === "U", "conflict swaps P and U");
+  assert(getShortcutFor("tool_smart_poly") === "P" && getShortcutFor("tool_poly_manual") === "U", "swapped values persisted");
 
   // Reload from localStorage
   loadCustomShortcuts();
-  assert(getShortcutFor("tool_smart_poly") === "P" && getShortcutFor("tool_poly_manual") === "Q", "custom shortcuts persist across reload");
+  assert(getShortcutFor("tool_smart_poly") === "P" && getShortcutFor("tool_poly_manual") === "U", "custom shortcuts persist across reload");
 
   // 4. Reset single & reset all
   assert(resetSingleShortcut("tool_smart_poly") === true, "reset single succeeds");
@@ -1005,6 +1014,17 @@ const runTests = `
   // 7. cycleImage navigation
   assert(cycleImage(1) === true && currentImageName === "b.jpg", "cycleImage forward to b.jpg");
   assert(cycleImage(-1) === true && currentImageName === "a.jpg", "cycleImage backward to a.jpg");
+
+  // 8. zoom_out / zoom_in / zoom_reset shortcuts
+  assert(matchShortcutAction({ key: "-" }) === "zoom_out", "- matches zoom_out");
+  assert(matchShortcutAction({ key: "=" }) === "zoom_in", "= matches zoom_in");
+  assert(matchShortcutAction({ key: "+", shiftKey: true, code: "Equal" }) === "zoom_in", "+ matches zoom_in");
+  assert(matchShortcutAction({ key: "+", code: "NumpadAdd" }) === "zoom_in", "Numpad+ matches zoom_in");
+  assert(matchShortcutAction({ key: "r" }) === "zoom_reset", "r matches zoom_reset");
+  executeShortcutAction("zoom_in");
+  executeShortcutAction("zoom_out");
+  executeShortcutAction("zoom_reset");
+  assert(zoomActions.length === 3 && zoomActions[0] === 0.2 && zoomActions[1] === -0.2 && zoomActions[2] === "reset", "zoom actions call adjustZoom and resetZoom");
 `;
 
 vm.runInNewContext(shortcutSrc + "\n" + runTests, ctx);

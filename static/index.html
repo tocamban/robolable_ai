@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RoboLabel AI v1.5 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
+  <title>RoboLabel AI v1.51 — Studio Gán Nhãn &amp; Phân Đoạn Ảnh YOLO</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
@@ -2000,7 +2000,7 @@
       </div>
     </div>
     <div class="top-right">
-      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.5 • Nhấn để xem điểm mới bản cập nhật">v1.5</span>
+      <span class="app-version-pill" id="appVersionBadge" onclick="openReleaseNotesModal()" style="cursor:pointer;" title="RoboLabel AI v1.51 • Nhấn để xem điểm mới bản cập nhật">v1.51</span>
       <button type="button" class="btn-shortcut-header" id="btnOpenShortcuts" onclick="openShortcutModal()" title="Cài đặt & tùy chỉnh phím tắt (Phím K)">
         <i class="fa-regular fa-keyboard"></i> Phím tắt
       </button>
@@ -2238,10 +2238,10 @@
 
       <!-- Bottom Toolbar -->
       <div class="bottom-toolbar">
-        <button class="zoom-btn" onclick="adjustZoom(-0.2)"><i class="fa-solid fa-minus"></i></button>
+        <button class="zoom-btn" id="btnZoomOut" onclick="adjustZoom(-0.2)" title="Thu nhỏ ảnh (-20%, Phím -)"><i class="fa-solid fa-minus"></i></button>
         <span id="zoomPercent">100%</span>
-        <button class="zoom-btn" onclick="adjustZoom(0.2)"><i class="fa-solid fa-plus"></i></button>
-        <button class="zoom-btn" onclick="resetZoom()">RESET</button>
+        <button class="zoom-btn" id="btnZoomIn" onclick="adjustZoom(0.2)" title="Phóng to ảnh (+20%, Phím =)"><i class="fa-solid fa-plus"></i></button>
+        <button class="zoom-btn" id="btnZoomReset" onclick="resetZoom()" title="Đặt lại thu phóng vừa khung (Phím R)">RESET</button>
         <div style="height:14px; width:1px; background:#cbd5e1; margin:0 4px;"></div>
         <button class="mask-fill-toggle" id="maskFillBtn" onclick="toggleMaskFill()" title="Bật/Tắt tô màu Mask (Tím/Màu lớp)">
           <i class="fa-solid fa-shapes"></i>
@@ -2634,7 +2634,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-book-open"></i>
           <span>Hướng dẫn sử dụng giao diện RoboLabel AI</span>
-          <span class="app-version-pill">v1.5</span>
+          <span class="app-version-pill">v1.51</span>
         </div>
         <button class="modal-close" onclick="closeGuideModal()" aria-label="Đóng hướng dẫn">&times;</button>
       </div>
@@ -2693,7 +2693,7 @@
               <rect x="328" y="13" width="82" height="24" rx="12" fill="#dcfce7"/>
               <text x="369" y="29" text-anchor="middle" font-size="9" font-weight="700" fill="#15803d">Đã lưu tự động</text>
               <rect x="480" y="15" width="38" height="20" rx="10" fill="#dcfce7" stroke="#86efac"/>
-              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.5</text>
+              <text x="499" y="28" text-anchor="middle" font-size="9" font-weight="800" fill="#15803d">v1.51</text>
               <rect x="524" y="13" width="66" height="24" rx="12" fill="#eef2ff" stroke="#c7d2fe"/>
               <text x="557" y="29" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338ca">Hướng dẫn</text>
               <rect x="596" y="13" width="92" height="24" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
@@ -3527,7 +3527,7 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-rocket" style="color:var(--primary);"></i>
           <span>Điểm mới trên bản cập nhật RoboLabel AI</span>
-          <span class="app-version-pill">v1.5</span>
+          <span class="app-version-pill">v1.51</span>
         </div>
         <button class="modal-close" onclick="closeReleaseNotesModal()" aria-label="Đóng thông báo cập nhật">&times;</button>
       </div>
@@ -3536,44 +3536,44 @@
         <div class="guide-intro-banner" style="padding:10px 12px;">
           <i class="fa-solid fa-circle-info" style="font-size:17px; color:#6d28d9; flex-shrink:0;"></i>
           <div>
-            Chào mừng bạn đến với <b>RoboLabel AI v1.5</b>! Bản cập nhật này bổ sung 2 nút <b>Xóa ID ảnh này</b> / <b>Xóa ID toàn Project</b>, gán nhanh Group ID ngay trên Canvas bằng phím số, cùng các cải tiến giao diện từ v1.42.
+            Chào mừng bạn đến với <b>RoboLabel AI v1.51</b>! Bản cập nhật này bổ sung hộp thoại <b>Cài đặt &amp; Tùy chỉnh Phím tắt</b>, phím tắt chuyển nhanh giữa <b>Nhãn / Classes / Ảnh</b> và phím tắt <b>Thu nhỏ / Phóng to / Đặt lại khung nhìn</b>.
           </div>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:9px; font-size:12px; color:#334155; line-height:1.5;">
-          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:9px; padding:10px 12px;">
-            <div style="font-weight:700; color:#b45309; margin-bottom:3px;">
-              <i class="fa-solid fa-link-slash"></i> 1. Xóa toàn bộ Group ID theo ảnh hoặc toàn Project
-            </div>
-            <div>
-              Cột trái <i>Current Objects</i> có thêm 2 nút riêng biệt: <b>Xóa ID ảnh này</b> (hỗ trợ <span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span> hoàn tác) và <b>Xóa ID toàn Project</b> (dọn sạch mọi <code>group_id</code> trong toàn bộ project mà vẫn giữ nguyên toàn bộ vùng nhãn polygon/box).
-            </div>
-          </div>
-
           <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#6d28d9; margin-bottom:3px;">
-              <i class="fa-solid fa-bolt"></i> 2. Popover nhập nhanh Group ID ngay trên Canvas
+              <i class="fa-regular fa-keyboard"></i> 1. Cài đặt &amp; Tùy chỉnh Phím tắt linh hoạt (<span class="kbd-tag">K</span>)
             </div>
             <div>
-              Chọn một vùng nhãn trên ảnh để mở ô nhập ID cạnh con trỏ, hoặc nhấn thẳng phím số (<span class="kbd-tag">0</span>–<span class="kbd-tag">9</span>) rồi bấm <span class="kbd-tag">Enter</span> để gán ID tức thì; bấm <span class="kbd-tag">Esc</span> để hủy chỉnh sửa.
+              Bấm nút <b>Phím tắt</b> trên Header (hoặc phím <span class="kbd-tag">K</span>) để đổi phím cho mọi công cụ vẽ &amp; thao tác; tự nhận phím khi bật bộ gõ tiếng Việt, tự hoán đổi khi trùng phím và lưu tự động trên trình duyệt.
             </div>
           </div>
 
           <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#15803d; margin-bottom:3px;">
-              <i class="fa-solid fa-up-down"></i> 3. Kéo căn chỉnh bảng Classes / Objects &amp; Header thích ứng
+              <i class="fa-solid fa-arrows-up-down-left-right"></i> 2. Chuyển nhanh Nhãn, Classes, Ảnh &amp; Phóng to / Thu nhỏ
             </div>
             <div>
-              Kéo thanh ngang giữa <i>Classes</i> và <i>Current Objects</i> (lưu vị trí), tự cuộn mượt đến đúng nhãn khi chọn trên ảnh, và thanh Header tự xuống 2 hàng gọn gàng ở cửa sổ hẹp (&le; 1080px).
+              Dùng <span class="kbd-tag">↑</span> / <span class="kbd-tag">↓</span> chuyển <b>Classes</b>, <span class="kbd-tag">,</span> / <span class="kbd-tag">.</span> chuyển qua lại các <b>Nhãn (Objects)</b>, <span class="kbd-tag">←</span> / <span class="kbd-tag">→</span> chuyển <b>Ảnh</b>, và <span class="kbd-tag">-</span> / <span class="kbd-tag">= (+)</span> / <span class="kbd-tag">R</span> để thu nhỏ, phóng to hoặc đặt lại tỷ lệ ảnh.
+            </div>
+          </div>
+
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:9px; padding:10px 12px;">
+            <div style="font-weight:700; color:#b45309; margin-bottom:3px;">
+              <i class="fa-solid fa-link-slash"></i> 3. Xóa nhanh Group ID &amp; Popover nhập ID trên Canvas (v1.5)
+            </div>
+            <div>
+              Hỗ trợ 2 nút <b>Xóa ID ảnh này</b> (<span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span>) và <b>Xóa ID toàn Project</b>, cùng ô nhập nhanh Group ID bằng phím số (<span class="kbd-tag">0</span>–<span class="kbd-tag">9</span>) ngay khi chọn vùng nhãn trên ảnh.
             </div>
           </div>
 
           <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:9px; padding:10px 12px;">
             <div style="font-weight:700; color:#4338ca; margin-bottom:3px;">
-              <i class="fa-solid fa-layer-group"></i> 4. Vẽ tự do (F), Xóa ảnh nhanh (Ctrl + Z) &amp; Tự sửa trùng Shapely
+              <i class="fa-solid fa-layer-group"></i> 4. Vẽ tự do (F), Kéo tỷ lệ Sidebar &amp; Tự sửa trùng Shapely
             </div>
             <div>
-              Vẽ đường bao tự do theo chuột (<span class="kbd-tag">F</span>), bấm <b>&times;</b> trên thumbnail để xóa ảnh lỗi (<span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span> khôi phục), tự cảnh báo &amp; cắt vùng giao nhau <code>&gt; 2 px²</code> bằng nút <b>Tự sửa</b>.
+              Kéo thanh ngang giữa <i>Classes</i> và <i>Current Objects</i>, tự cuộn đến đúng nhãn đang chọn, vẽ tự do (<span class="kbd-tag">F</span>), xóa ảnh lỗi (<span class="kbd-tag">Ctrl</span> + <span class="kbd-tag">Z</span> khôi phục) và tự cắt vùng giao nhau <code>&gt; 2 px²</code>.
             </div>
           </div>
         </div>
@@ -3631,7 +3631,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v1.5";
+    const APP_VERSION = "v1.51";
     const SEEN_VERSION_KEY = "robolabel_seen_version";
     const SIDEBAR_SPLIT_KEY = "robolabel_sidebar_top_height";
     const SHORTCUT_STORAGE_KEY = "robolabel_custom_shortcuts";
@@ -3663,10 +3663,13 @@
 
       { id: "delete_annotation", group: "actions", defaultKey: "Delete", label: "Xóa nhãn đang chọn", desc: "Xóa object đang chọn (hỗ trợ Ctrl+Z hoàn tác)" },
       { id: "undo", group: "actions", defaultKey: "Ctrl+Z", label: "Hoàn tác (Undo)", desc: "Hoàn tác thao tác nhãn hoặc khôi phục ảnh vừa xóa" },
+      { id: "zoom_out", group: "actions", defaultKey: "-", label: "Thu nhỏ ảnh (-20%)", desc: "Thu nhỏ khung nhìn ảnh trên Canvas" },
+      { id: "zoom_in", group: "actions", defaultKey: "=", label: "Phóng to ảnh (+20%)", desc: "Phóng to khung nhìn ảnh trên Canvas (hỗ trợ cả phím +)" },
+      { id: "zoom_reset", group: "actions", defaultKey: "R", label: "Đặt lại thu phóng (Fit)", desc: "Khôi phục tỷ lệ vừa khít khung hình" },
       { id: "eraser_decrease", group: "actions", defaultKey: "[", label: "Giảm cỡ Cục Tẩy (-5px)", desc: "Thu nhỏ bán kính đầu cục tẩy" },
       { id: "eraser_increase", group: "actions", defaultKey: "]", label: "Tăng cỡ Cục Tẩy (+5px)", desc: "Phóng to bán kính đầu cục tẩy" },
-      { id: "group_id_decrease", group: "actions", defaultKey: "-", label: "Giảm Group ID mới (-1)", desc: "Giảm Group ID mặc định cho vùng vẽ mới" },
-      { id: "group_id_increase", group: "actions", defaultKey: "=", label: "Tăng Group ID mới (+1)", desc: "Tăng Group ID mặc định sang cụm tiếp theo" },
+      { id: "group_id_decrease", group: "actions", defaultKey: "Q", label: "Giảm Group ID mới (-1)", desc: "Giảm Group ID mặc định cho vùng vẽ mới" },
+      { id: "group_id_increase", group: "actions", defaultKey: "W", label: "Tăng Group ID mới (+1)", desc: "Tăng Group ID mặc định sang cụm tiếp theo" },
       { id: "toggle_mask_fill", group: "actions", defaultKey: "M", label: "Bật/Tắt tô màu Mask", desc: "Hiện/ẩn lớp tô màu bán trong suốt" },
       { id: "toggle_auto_classify", group: "actions", defaultKey: "C", label: "Bật/Tắt Tự nhận diện Class", desc: "Bật/tắt CLIP tự đoán Class khi dùng AI" },
       { id: "autofix_overlap", group: "actions", defaultKey: "O", label: "Tự sửa vùng nhãn trùng", desc: "Tự động cắt phần đè theo thứ tự ưu tiên" },
@@ -3728,7 +3731,10 @@
       let baseKey = "";
       let isShiftedSymbol = false;
 
-      if (SPECIAL_KEY_NAMES[rawKey]) {
+      if (!hasCtrl && !hasAlt && (rawKey === "+" || rawCode === "NumpadAdd")) {
+        baseKey = "=";
+        isShiftedSymbol = true;
+      } else if (SPECIAL_KEY_NAMES[rawKey]) {
         baseKey = SPECIAL_KEY_NAMES[rawKey];
       } else if (/^F([1-9]|1[0-2])$/i.test(rawKey)) {
         baseKey = rawKey.toUpperCase();
@@ -3784,7 +3790,8 @@
         Backspace: "Backspace",
         Space: "Space",
         ",": ", (<)",
-        ".": ". (>)"
+        ".": ". (>)",
+        "=": "= (+)"
       };
       const parts = String(keyStr).split("+").map(p => tokenMap[p] || p);
       return compact ? parts.join("+") : parts.join(" + ");
@@ -4020,6 +4027,9 @@
         case "tool_pan": return setTool("pan");
         case "delete_annotation": return deleteSelectedAnnotation();
         case "undo": return undoAnnotation();
+        case "zoom_out": adjustZoom(-0.2); return true;
+        case "zoom_in": adjustZoom(0.2); return true;
+        case "zoom_reset": resetZoom(); return true;
         case "eraser_decrease": return setEraserRadius(eraserRadius - 5);
         case "eraser_increase": return setEraserRadius(eraserRadius + 5);
         case "group_id_decrease": return stepActiveGroupId(-1);
@@ -4060,6 +4070,9 @@
       const autoFixKey = formatShortcutKey(getShortcutFor("autofix_overlap"), true);
       const eraserDecKey = formatShortcutKey(getShortcutFor("eraser_decrease"), true);
       const eraserIncKey = formatShortcutKey(getShortcutFor("eraser_increase"), true);
+      const zoomOutKey = formatShortcutKey(getShortcutFor("zoom_out"), true);
+      const zoomInKey = formatShortcutKey(getShortcutFor("zoom_in"), true);
+      const zoomResetKey = formatShortcutKey(getShortcutFor("zoom_reset"), true);
 
       setTxt("kbdHintPrevClass", prevClsKey);
       setTxt("kbdHintNextClass", nextClsKey);
@@ -4072,6 +4085,9 @@
       setTitle("btnNextAnnNav", `Chuyển nhãn (Object) tiếp theo (Phím ${nextAnnKey})`);
       setTitle("btnOpenShortcuts", `Cài đặt & tùy chỉnh phím tắt (Phím ${openScKey})`);
       setTitle("toolUndoBtn", `Undo (${undoKey})`);
+      setTitle("btnZoomOut", `Thu nhỏ ảnh (-20%, Phím ${zoomOutKey})`);
+      setTitle("btnZoomIn", `Phóng to ảnh (+20%, Phím ${zoomInKey})`);
+      setTitle("btnZoomReset", `Đặt lại thu phóng vừa khung (Phím ${zoomResetKey})`);
       setTitle("maskFillBtn", `Bật/Tắt tô màu Mask (Phím ${maskKey})`);
       setTitle("btnAutoFixOverlap", `Tự động cắt trừ phần giao nhau theo thứ tự ưu tiên (Phím ${autoFixKey})`);
 
